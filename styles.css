@@ -660,6 +660,21 @@ textarea.auto-grow {
         page-break-inside: avoid;
         border-color: #000;
     }
+    .photo-img-wrapper {
+        display: block !important;
+        height: auto !important;
+        background-color: transparent !important;
+        text-align: center;
+    }
+    .photo-item img {
+        display: inline-block !important;
+        max-width: 100% !important;
+        max-height: 250px !important;
+        object-fit: contain !important;
+        visibility: visible !important;
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+    }
     tr {
         page-break-inside: avoid;
     }
