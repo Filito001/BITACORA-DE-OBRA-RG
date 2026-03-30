@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Informe Diario de Interventoría</title>
+    <link rel="stylesheet" href="styles.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+</head>
+<body>
+    <div class="actions noprint">
+        <button id="btn-print" onclick="window.print()"><i class="fas fa-print"></i> Exportar / Imprimir PDF</button>
+    </div>
+
+    <div class="page-container">
+        
+        <!-- Header Section -->
+        <header class="header-section">
+            <div class="header-title">
+                <h1>INFORME DIARIO DE INTERVENTORÍA</h1>
+                <div class="subtitle-group">
+                    <label>OBRA:</label>
+                    <input type="text" id="obra-name" value="Reserva de Guance" class="editable-input bold-text" />
+                </div>
+            </div>
+            <div class="header-meta">
+                <div class="meta-item">
+                    <label>Código:</label>
+                    <input type="text" value="" class="editable-input" placeholder="Opcional..." />
+                </div>
+                <div class="meta-item">
+                    <label>Versión:</label>
+                    <input type="text" value="01" class="editable-input" />
+                </div>
+            </div>
+        </header>
+
+        <!-- General Info Section -->
+        <section class="general-info">
+            <div class="info-group">
+                <label>Fecha:</label>
+                <input type="date" id="report-date" class="editable-input" />
+            </div>
+            <div class="info-group">
+                <label>Tiempo:</label>
+                <input type="text" value="Nublado" class="editable-input" placeholder="Ej. Sol, Lluvia..." />
+            </div>
+            <div class="info-group">
+                <label>Temperatura:</label>
+                <div class="temp-input-wrapper">
+                    <input type="number" value="20" class="editable-input" /> <span>°C</span>
+                </div>
+            </div>
+        </section>
+
+        <!-- Weather Table Section -->
+        <section class="section-block">
+            <h2 class="section-title">ESTADO DEL CLIMA</h2>
+            <div class="weather-instructions noprint">
+                <small><i class="fas fa-info-circle"></i> Haz clic en las celdas de horas para alternar entre Seco y Lluvia según la hora correspondiente.</small>
+            </div>
+            <div class="weather-table-container">
+                <table class="weather-table">
+                    <thead>
+                        <tr>
+                            <td rowspan="2" class="th-label">ESTADO DEL TIEMPO</td>
+                            <td colspan="6" class="th-sec-lluvia">
+                                <div class="estado-legend">
+                                    <span class="legend-item"><div class="color-box sec"></div>SECO</span>
+                                    <span class="legend-item"><div class="color-box base-lluvia"></div>LLUVIA</span>
+                                </div>
+                            </td>
+                        </tr>
+                        <tr>
+                            <th colspan="6">am</th>
+                            <th colspan="6">pm</th>
+                        </tr>
+                        <tr class="hours-row">
+                            <th>7</th><th>8</th><th>9</th><th>10</th><th>11</th><th>12</th>
+                            <th>13</th><th>14</th><th>15</th><th>16</th><th>17</th><th>18</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr class="weather-slots" id="weather-slots">
+                            <!-- JS will populate the 12 cells here -->
+                        </tr>
+                    </tbody>
+                </table>
+                <div class="precipitaciones-box">
+                    <div class="precipitaciones-row">
+                        <label>Precipitaciones:</label>
+                        <input type="text" class="editable-input full-width" placeholder="Ingrese detalles de precipitaciones...">
+                    </div>
+                    <div class="precipitaciones-row">
+                        <label>Nota:</label>
+                        <textarea class="editable-input full-width auto-grow" rows="1" placeholder="Información adicional del clima..."></textarea>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Personnel Table Section -->
+        <section class="section-block">
+            <div class="section-header">
+                <h2 class="section-title">PERSONAL EN OBRA</h2>
+                <button class="btn-add noprint" onclick="addPersonRow()"><i class="fas fa-plus"></i> Añadir Registro</button>
+            </div>
+            <table class="data-table" id="personnel-table">
+                <thead>
+                    <tr>
+                        <th width="30%">EMPRESA O CONTRATISTA</th>
+                        <th width="30%">CANTIDAD Y ROL</th>
+                        <th width="40%">ACTIVIDADES</th>
+                        <th class="noprint" width="5%"></th>
+                    </tr>
+                </thead>
+                <tbody id="personnel-body">
+                    <!-- Default Row -->
+                    <tr>
+                        <td><textarea class="editable-input full-width auto-grow" rows="2">SERRA I&A S.A.S</textarea></td>
+                        <td><textarea class="editable-input full-width auto-grow" rows="2">1 Profesional
+(Residente de interventoría)</textarea></td>
+                        <td><textarea class="editable-input full-width auto-grow" rows="2">Verificación y control de avance de obra</textarea></td>
+                        <td class="noprint text-center"><button class="btn-delete" onclick="removeRow(this)"><i class="fas fa-trash"></i></button></td>
+                    </tr>
+                    <tr>
+                        <td><textarea class="editable-input full-width auto-grow" rows="3">PORTICO S.A.S.</textarea></td>
+                        <td><textarea class="editable-input full-width auto-grow" rows="3">1 Profesional
+(Residente de obra)
+1 Ayudante de obra</textarea></td>
+                        <td><textarea class="editable-input full-width auto-grow" rows="3">Ejecución de obra
+
+Oficios varios</textarea></td>
+                        <td class="noprint text-center"><button class="btn-delete" onclick="removeRow(this)"><i class="fas fa-trash"></i></button></td>
+                    </tr>
+                </tbody>
+            </table>
+        </section>
+
+        <!-- Materials Table Section -->
+        <section class="section-block mt-page-break"> <!-- Added margin or page break if needed -->
+            <div class="section-header">
+                <h2 class="section-title">RECEPCIONES DE MATERIAL O EQUIPO</h2>
+                <button class="btn-add noprint" onclick="addMaterialRow()"><i class="fas fa-plus"></i> Añadir Material</button>
+            </div>
+            <table class="data-table" id="materials-table">
+                <thead>
+                    <tr>
+                        <th width="15%">Fecha</th>
+                        <th width="10%">Hora</th>
+                        <th width="35%">Material/equipo</th>
+                        <th width="15%">Cantidad</th>
+                        <th width="25%">Observaciones</th>
+                        <th class="noprint" width="5%"></th>
+                    </tr>
+                </thead>
+                <tbody id="materials-body">
+                    <tr>
+                        <td><input type="date" class="editable-input full-width" /></td>
+                        <td><input type="time" class="editable-input full-width" /></td>
+                        <td><textarea class="editable-input full-width auto-grow" rows="1"></textarea></td>
+                        <td><input type="text" class="editable-input full-width" /></td>
+                        <td><textarea class="editable-input full-width auto-grow" rows="1"></textarea></td>
+                        <td class="noprint text-center"><button class="btn-delete" onclick="removeRow(this)"><i class="fas fa-trash"></i></button></td>
+                    </tr>
+                </tbody>
+            </table>
+        </section>
+
+        <!-- Field Activities Section -->
+        <section class="section-block">
+            <h2 class="section-title">ACTIVIDADES EN CAMPO</h2>
+            <div class="textarea-container">
+                <textarea class="editable-input full-width auto-grow description-area" rows="4" placeholder="Describa las actividades de campo que se están realizando..."></textarea>
+            </div>
+        </section>
+
+        <!-- Photos Section -->
+        <section class="section-block page-break-before">
+            <div class="section-header">
+                <h2 class="section-title">REGISTRO FOTOGRÁFICO</h2>
+                <div class="photo-actions noprint">
+                    <label for="camera-upload" class="btn-add photo-btn">
+                        <i class="fas fa-camera"></i> Tomar Foto
+                    </label>
+                    <input type="file" id="camera-upload" class="hidden" accept="image/*" capture="environment" onchange="handleImageUpload(event)" />
+
+                    <label for="photo-upload" class="btn-add photo-btn">
+                        <i class="fas fa-upload"></i> Subir Imágenes
+                    </label>
+                    <input type="file" id="photo-upload" class="hidden" multiple accept="image/*" onchange="handleImageUpload(event)" />
+                </div>
+            </div>
+            
+            <div class="photos-grid" id="photos-grid">
+                <!-- Example of Empty State for Printing if no photos -->
+                <div class="empty-photos msg noprint" id="empty-photos-msg">
+                    <i class="fas fa-images"></i>
+                    <p>No hay fotos agregadas. Haz clic en "Subir Imágenes" para agregar evidencia.</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- Recommendations Section -->
+        <section class="section-block">
+            <h2 class="section-title">RECOMENDACIONES.</h2>
+            <div class="textarea-container">
+                <textarea class="editable-input full-width auto-grow" rows="4" placeholder="Ingrese recomendaciones u observaciones finales..."></textarea>
+            </div>
+        </section>
+
+        <!-- Signatures Section -->
+        <section class="signatures-section">
+            <div class="signature-box">
+                <div class="sign-line"></div>
+                <input type="text" class="editable-input bold-text text-center" value="Arq. Filemón Arias" />
+                <input type="text" class="editable-input text-center text-sm" value="Residente de Interventoría" />
+                <input type="text" class="editable-input text-center text-sm" value="SERRA I&A S.A.S" />
+            </div>
+            <div class="signature-box">
+                <div class="sign-line"></div>
+                <input type="text" class="editable-input bold-text text-center" value="Arq. Wilmer" />
+                <input type="text" class="editable-input text-center text-sm" value="Residente de Obra" />
+                <input type="text" class="editable-input text-center text-sm" value="PORTICO" />
+            </div>
+        </section>
+        
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>
