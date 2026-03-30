@@ -7,8 +7,8 @@ document.addEventListener("DOMContentLoaded", () => {
             
             // On load, attempt to load today's current saved file if any
             loadLogFromDB(today, () => {
-                // If nothing was found, at least set date
-                dateInput.value = today;
+                // If nothing was found, at least set date and defaults
+                clearFormAndSetDate(today);
             });
         }
         initCalendar();
@@ -341,7 +341,13 @@ function clearFormAndSetDate(dateStr) {
         date: dateStr, obra: 'Reserva de Guance', codigo: '', version: '01', tiempo: '', temperatura: '',
         weatherSlots: Array(12).fill(0), precipitaciones: '', notaClima: '', actividadesCampo: '', recomendaciones: '',
         signatures: ['Arq. Filemón Arias', 'Residente de Interventoría', 'SERRA I&A S.A.S', 'Arq. Wilmer', 'Residente de Obra', 'PORTICO'],
-        personnel: [['', '', '']], materials: [['', '', '', '', '']], photos: []
+        personnel: [
+            ['SERRA I&A S.A.S', '1 Profesional\n(Residente de interventoría)', 'Verificación y control de avance de obra'],
+            ['PORTICO S.A.S', '1 Profesional\n(Residente de obra)', 'Ejecución de obra'],
+            ['PORTICO S.A.S', '1 Ayudante de obra', 'Oficios varios'],
+            ['J&J Ingenieros Asociados', '1 Topógrafo\n1 Operario retroexcavadora\n1 SST\n1 Oficial', 'Tareas asignadas']
+        ], 
+        materials: [['', '', '', '', '']], photos: []
     };
     deserializeForm(blank);
 }
