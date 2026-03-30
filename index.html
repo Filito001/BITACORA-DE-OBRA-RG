@@ -106,36 +106,38 @@
                 <h2 class="section-title">PERSONAL EN OBRA</h2>
                 <button class="btn-add noprint" onclick="addPersonRow()"><i class="fas fa-plus"></i> Añadir Registro</button>
             </div>
-            <table class="data-table" id="personnel-table">
-                <thead>
-                    <tr>
-                        <th width="30%">EMPRESA O CONTRATISTA</th>
-                        <th width="30%">CANTIDAD Y ROL</th>
-                        <th width="40%">ACTIVIDADES</th>
-                        <th class="noprint" width="5%"></th>
-                    </tr>
-                </thead>
-                <tbody id="personnel-body">
-                    <!-- Default Row -->
-                    <tr>
-                        <td><textarea class="editable-input full-width auto-grow" rows="2">SERRA I&A S.A.S</textarea></td>
-                        <td><textarea class="editable-input full-width auto-grow" rows="2">1 Profesional
+            <div class="table-responsive">
+                <table class="data-table" id="personnel-table">
+                    <thead>
+                        <tr>
+                            <th width="30%">EMPRESA O CONTRATISTA</th>
+                            <th width="30%">CANTIDAD Y ROL</th>
+                            <th width="40%">ACTIVIDADES</th>
+                            <th class="noprint" width="5%"></th>
+                        </tr>
+                    </thead>
+                    <tbody id="personnel-body">
+                        <!-- Default Row -->
+                        <tr>
+                            <td><textarea class="editable-input full-width auto-grow" rows="2">SERRA I&A S.A.S</textarea></td>
+                            <td><textarea class="editable-input full-width auto-grow" rows="2">1 Profesional
 (Residente de interventoría)</textarea></td>
-                        <td><textarea class="editable-input full-width auto-grow" rows="2">Verificación y control de avance de obra</textarea></td>
-                        <td class="noprint text-center"><button class="btn-delete" onclick="removeRow(this)"><i class="fas fa-trash"></i></button></td>
-                    </tr>
-                    <tr>
-                        <td><textarea class="editable-input full-width auto-grow" rows="3">PORTICO S.A.S.</textarea></td>
-                        <td><textarea class="editable-input full-width auto-grow" rows="3">1 Profesional
+                            <td><textarea class="editable-input full-width auto-grow" rows="2">Verificación y control de avance de obra</textarea></td>
+                            <td class="noprint text-center"><button class="btn-delete" onclick="removeRow(this)"><i class="fas fa-trash"></i></button></td>
+                        </tr>
+                        <tr>
+                            <td><textarea class="editable-input full-width auto-grow" rows="3">PORTICO S.A.S.</textarea></td>
+                            <td><textarea class="editable-input full-width auto-grow" rows="3">1 Profesional
 (Residente de obra)
 1 Ayudante de obra</textarea></td>
-                        <td><textarea class="editable-input full-width auto-grow" rows="3">Ejecución de obra
+                            <td><textarea class="editable-input full-width auto-grow" rows="3">Ejecución de obra
 
 Oficios varios</textarea></td>
-                        <td class="noprint text-center"><button class="btn-delete" onclick="removeRow(this)"><i class="fas fa-trash"></i></button></td>
-                    </tr>
-                </tbody>
-            </table>
+                            <td class="noprint text-center"><button class="btn-delete" onclick="removeRow(this)"><i class="fas fa-trash"></i></button></td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
         </section>
 
         <!-- Materials Table Section -->
@@ -144,28 +146,30 @@ Oficios varios</textarea></td>
                 <h2 class="section-title">RECEPCIONES DE MATERIAL O EQUIPO</h2>
                 <button class="btn-add noprint" onclick="addMaterialRow()"><i class="fas fa-plus"></i> Añadir Material</button>
             </div>
-            <table class="data-table" id="materials-table">
-                <thead>
-                    <tr>
-                        <th width="15%">Fecha</th>
-                        <th width="10%">Hora</th>
-                        <th width="35%">Material/equipo</th>
-                        <th width="15%">Cantidad</th>
-                        <th width="25%">Observaciones</th>
-                        <th class="noprint" width="5%"></th>
-                    </tr>
-                </thead>
-                <tbody id="materials-body">
-                    <tr>
-                        <td><input type="date" class="editable-input full-width" /></td>
-                        <td><input type="time" class="editable-input full-width" /></td>
-                        <td><textarea class="editable-input full-width auto-grow" rows="1"></textarea></td>
-                        <td><input type="text" class="editable-input full-width" /></td>
-                        <td><textarea class="editable-input full-width auto-grow" rows="1"></textarea></td>
-                        <td class="noprint text-center"><button class="btn-delete" onclick="removeRow(this)"><i class="fas fa-trash"></i></button></td>
-                    </tr>
-                </tbody>
-            </table>
+            <div class="table-responsive">
+                <table class="data-table" id="materials-table">
+                    <thead>
+                        <tr>
+                            <th width="15%">Fecha</th>
+                            <th width="10%">Hora</th>
+                            <th width="35%">Material/equipo</th>
+                            <th width="15%">Cantidad</th>
+                            <th width="25%">Observaciones</th>
+                            <th class="noprint" width="5%"></th>
+                        </tr>
+                    </thead>
+                    <tbody id="materials-body">
+                        <tr>
+                            <td><input type="date" class="editable-input full-width" /></td>
+                            <td><input type="time" class="editable-input full-width" /></td>
+                            <td><textarea class="editable-input full-width auto-grow" rows="1"></textarea></td>
+                            <td><input type="text" class="editable-input full-width" /></td>
+                            <td><textarea class="editable-input full-width auto-grow" rows="1"></textarea></td>
+                            <td class="noprint text-center"><button class="btn-delete" onclick="removeRow(this)"><i class="fas fa-trash"></i></button></td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
         </section>
 
         <!-- Field Activities Section -->
