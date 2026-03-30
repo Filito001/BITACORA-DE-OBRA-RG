@@ -3,7 +3,6 @@ document.addEventListener("DOMContentLoaded", () => {
     const dateInput = document.getElementById('report-date');
     if (dateInput) {
         const today = new Date().toISOString().split('T')[0];
-        // dateInput.value = today; // Wait, actually sometimes users want to set past dates. Let's just set today.
         dateInput.value = today;
     }
 
@@ -12,6 +11,12 @@ document.addEventListener("DOMContentLoaded", () => {
 
     // 3. Auto-grow Textareas
     setupAutoGrow();
+
+    // 4. Initialize Calendar
+    initCalendar();
+
+    // 5. Setup Notifications Recordatorio (4PM)
+    setupNotifications();
 });
 
 // Auto-grow textareas to fit content
@@ -162,6 +167,122 @@ window.removePhoto = function(btn) {
         if (remainingPhotos.length === 0) {
             const emptyMsg = document.getElementById('empty-photos-msg');
             if (emptyMsg) emptyMsg.style.display = 'flex';
+        }
+    }
+}
+
+// --- CALENDAR & LOCALSTORAGE LOGIC ---
+const STORAGE_KEY = 'bitacoras_completadas';
+
+function getCompletedLogs() {
+    return JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
+}
+
+function saveLog(dateStr) {
+    let logs = getCompletedLogs();
+    if (!logs.includes(dateStr)) {
+        logs.push(dateStr);
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(logs));
+    }
+}
+
+window.exportAndPrint = function() {
+    const dateInput = document.getElementById('report-date');
+    if (dateInput && dateInput.value) {
+        saveLog(dateInput.value);
+        initCalendar(); // Refresh calendar immediately to show green check
+    }
+    window.print();
+}
+
+function initCalendar() {
+    const header = document.getElementById('calendar-header');
+    const grid = document.getElementById('calendar-grid');
+    if (!header || !grid) return;
+
+    grid.innerHTML = '';
+    const now = new Date();
+    const currentMonth = now.getMonth();
+    const currentYear = now.getFullYear();
+    const todayStr = new Date(now.getTime() - now.getTimezoneOffset() * 60000).toISOString().split('T')[0];
+    
+    // Set Header
+    const monthNames = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
+    header.innerText = `${monthNames[currentMonth]} ${currentYear}`;
+
+    const firstDay = new Date(currentYear, currentMonth, 1);
+    const lastDay = new Date(currentYear, currentMonth + 1, 0);
+    
+    // 0 = Sunday, 1 = Monday ... calculate blanks before first day
+    let startDayOfWeek = firstDay.getDay() === 0 ? 6 : firstDay.getDay() - 1; 
+
+    // Blanks
+    for (let i = 0; i < startDayOfWeek; i++) {
+        const blank = document.createElement('div');
+        blank.className = 'cal-day';
+        grid.appendChild(blank);
+    }
+
+    const completedLogs = getCompletedLogs();
+
+    for (let i = 1; i <= lastDay.getDate(); i++) {
+        const dayDiv = document.createElement('div');
+        dayDiv.className = 'cal-day current-month';
+        dayDiv.innerText = i;
+        
+        // Format YYYY-MM-DD
+        const monthNumStr = String(currentMonth + 1).padStart(2, '0');
+        const dayNumStr = String(i).padStart(2, '0');
+        const loopDateStr = `${currentYear}-${monthNumStr}-${dayNumStr}`;
+
+        if (loopDateStr <= todayStr) {
+            // It's a past or present day
+            if (completedLogs.includes(loopDateStr)) {
+                dayDiv.classList.add('done');
+                dayDiv.innerHTML += ' <i class="fas fa-check"></i>';
+            } else {
+                dayDiv.classList.add('missed');
+                dayDiv.innerHTML += ' <i class="fas fa-times"></i>';
+            }
+        }
+
+        grid.appendChild(dayDiv);
+    }
+}
+
+// --- NOTIFICATIONS LOGIC ---
+let notificationShownToday = false;
+
+function setupNotifications() {
+    if (!("Notification" in window)) {
+        console.warn("Este navegador no soporta notificaciones de escritorio o móviles nativas.");
+        return;
+    }
+
+    if (Notification.permission !== "denied" && Notification.permission !== "granted") {
+        Notification.requestPermission();
+    }
+
+    // Check every minute if we hit 4PM and no log
+    setInterval(checkReminder, 60000);
+    checkReminder(); // initial check
+}
+
+function checkReminder() {
+    const now = new Date();
+    const todayStr = new Date(now.getTime() - now.getTimezoneOffset() * 60000).toISOString().split('T')[0];
+    const completedLogs = getCompletedLogs();
+
+    // Check if after 16:00 (4:00 PM)
+    if (now.getHours() >= 16) {
+        if (!completedLogs.includes(todayStr) && !notificationShownToday) {
+            if (Notification.permission === "granted") {
+                new Notification("¡Recordatorio de Bitácora!", {
+                    body: "Son más de las 4 PM y no has llenado la bitácora de obra de hoy.",
+                    icon: "https://cdn-icons-png.flaticon.com/512/2832/2832810.png"
+                });
+                notificationShownToday = true;
+            }
         }
     }
 }
