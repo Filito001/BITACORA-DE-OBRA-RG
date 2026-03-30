@@ -10,10 +10,22 @@
 </head>
 <body>
     <div class="actions noprint">
-        <button id="btn-print" onclick="window.print()"><i class="fas fa-print"></i> Exportar / Imprimir PDF</button>
+        <button id="btn-print" onclick="exportAndPrint()"><i class="fas fa-print"></i> Exportar / Imprimir PDF</button>
     </div>
 
-    <div class="page-container">
+    <div class="layout-wrapper">
+        <aside class="calendar-sidebar noprint">
+            <h3 class="calendar-title"><i class="far fa-calendar-check"></i> Registro del Mes</h3>
+            <div id="calendar-header" class="calendar-header"></div>
+            <div class="calendar-days-header">
+                <span>L</span><span>M</span><span>M</span><span>J</span><span>V</span><span>S</span><span>D</span>
+            </div>
+            <div id="calendar-grid" class="calendar-grid">
+                <!-- JS will inject days here -->
+            </div>
+        </aside>
+
+        <div class="page-container">
         
         <!-- Header Section -->
         <header class="header-section">
@@ -230,7 +242,8 @@ Oficios varios</textarea></td>
             </div>
         </section>
         
-    </div>
+    </div> <!-- End page-container -->
+    </div> <!-- End layout-wrapper -->
 
     <script src="app.js"></script>
 </body>
