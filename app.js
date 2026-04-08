@@ -136,15 +136,34 @@ function saveToCloud() {
     currentReportId = document.getElementById('report-date').value;
     if (!currentReportId) return;
     
-    const data = serializeForm(currentReportId);
+    let data;
+    try {
+        data = serializeForm(currentReportId);
+    } catch (err) {
+        console.error("Error al serializar:", err);
+        updateSyncStatus('Error interno al serializar', false);
+        return;
+    }
+    
+    // Función recursiva para sanitizar undefined antes de enviar a Firestore (Firestore odia los undefined)
+    function sanitize(obj) {
+        Object.keys(obj).forEach(key => {
+            if (obj[key] === undefined) obj[key] = null;
+            else if (typeof obj[key] === 'object' && obj[key] !== null) sanitize(obj[key]);
+        });
+        return obj;
+    }
+    
+    data = sanitize(data);
     
     db.collection('reports').doc(currentReportId).set(data)
         .then(() => {
             updateSyncStatus('Sincronizado', true);
         })
         .catch(err => {
-            console.error(err);
-            updateSyncStatus('Error al guardar', false);
+            console.error("Firestore Reject:", err);
+            updateSyncStatus('Error de Permisos en Base de Datos', false);
+            alert("Error de Permisos o Red: " + err.message + "\n\nAsegúrate de que Creaste la Base de Datos 'Firestore Database' desde Firebase y que le pusiste 'Empezar en Modo Prueba'.");
         });
 }
 
@@ -155,7 +174,9 @@ function loadCloudReport(dateStr) {
     db.collection('reports').doc(dateStr).get()
         .then(doc => {
             if (doc.exists) {
-                deserializeForm(doc.data());
+                try {
+                    deserializeForm(doc.data());
+                } catch(e) { console.error("Error al pintar informe", e); }
             } else {
                 clearFormAndSetDate(dateStr);
                 saveToCloud();
@@ -163,8 +184,9 @@ function loadCloudReport(dateStr) {
             updateSyncStatus('Sincronizado', true);
         })
         .catch(err => {
-            console.error(err);
-            updateSyncStatus('Error lectura', false);
+            console.error("Firestore Read Edit:", err);
+            updateSyncStatus('Fallo de Lectura (Permisos)', false);
+            alert("Firebase bloqueó la lectura.\nProblema Clásico: No habilitaste 'Firestore Database' en tu panel de Google Firebase, O faltan los permisos.\nEntra al panel, clíca en Compilación > Firestore Database y 'Crear base de datos' en modo Prueba.");
         });
 }
 
