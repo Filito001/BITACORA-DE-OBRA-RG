@@ -1,18 +1,9 @@
 // ============================================
-// FIREBASE CONFIGURATION (VIEW ONLY)
+// SUPABASE CONFIGURATION (VIEW ONLY)
 // ============================================
-const firebaseConfig = {
-    apiKey: "AIzaSyCMX0XS9PW-ftdxTyfXIPx7EhBNnyHkWaI",
-    authDomain: "bitacora-de-obra-rg.firebaseapp.com",
-    projectId: "bitacora-de-obra-rg",
-    storageBucket: "bitacora-de-obra-rg.firebasestorage.app",
-    messagingSenderId: "296530875584",
-    appId: "1:296530875584:web:baf85905206caecc58c925"
-};
-
-// Inicializar Firebase Compat V10
-firebase.initializeApp(firebaseConfig);
-const db = firebase.firestore();
+const supabaseUrl = 'https://khpvlbcfnelrnnycctfb.supabase.co';
+const supabaseKey = 'sb_publishable_JYjyOW3jkW7x8FUm3EQgXQ_Bs9nYiNl';
+const supabase = window.supabase.createClient(supabaseUrl, supabaseKey);
 
 let currentReportId = '';
 
@@ -44,21 +35,38 @@ function initView() {
     // Configurar campos en modo "readonly" globalmente
     lockAllInputs();
     
-    // Escuchar el reporte en tiempo real
-    updateSyncStatus('Cargando...', false);
+    // Primera Carga: Traer estado inicial
+    fetchInitialLoad();
     
-    db.collection('reports').doc(currentReportId).onSnapshot((doc) => {
-        if (doc.exists) {
-            deserializeForm(doc.data());
-            lockAllInputs(); // Relock dynamically added textareas
-            updateSyncStatus('Live: sincronizado', true);
-        } else {
-            updateSyncStatus('Reporte no encontrado', false);
-        }
-    }, (error) => {
-        console.error("Error al escuchar reporte:", error);
-        updateSyncStatus('Error de conexión', false);
-    });
+    // Escuchar el reporte en tiempo real
+    updateSyncStatus('Live: sincronizado', true);
+    
+    supabase
+      .channel('public:reports')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'reports', filter: `id=eq.${currentReportId}` }, payload => {
+          if (payload.new && payload.new.payload) {
+              deserializeForm(payload.new.payload);
+              lockAllInputs();
+          }
+      })
+      .subscribe();
+}
+
+async function fetchInitialLoad() {
+    updateSyncStatus('Cargando...', false);
+    const { data, error } = await supabase
+        .from('reports')
+        .select('payload')
+        .eq('id', currentReportId)
+        .single();
+        
+    if (!error && data && data.payload) {
+        deserializeForm(data.payload);
+        lockAllInputs();
+        updateSyncStatus('Live: sincronizado', true);
+    } else {
+        updateSyncStatus('Reporte no encontrado / vacío', false);
+    }
 }
 
 function lockAllInputs() {
