@@ -1,9 +1,62 @@
 // ============================================
-// SUPABASE CONFIGURATION
+// INDEXEDDB CONFIGURATION (LOCAL OFFLINE)
 // ============================================
-const supabaseUrl = 'https://khpvlbcfnelrnnycctfb.supabase.co';
-const supabaseKey = 'sb_publishable_JYjyOW3jkW7x8FUm3EQgXQ_Bs9nYiNl';
-const supabase = window.supabase.createClient(supabaseUrl, supabaseKey);
+const DB_NAME = 'BitacoraDB';
+const STORE_NAME = 'reportsStore';
+let dbInstance = null;
+
+function initDB() {
+    return new Promise((resolve, reject) => {
+        const request = indexedDB.open(DB_NAME, 1);
+        request.onupgradeneeded = event => {
+            const db = event.target.result;
+            if (!db.objectStoreNames.contains(STORE_NAME)) {
+                db.createObjectStore(STORE_NAME, { keyPath: 'id' });
+            }
+        };
+        request.onsuccess = event => {
+            dbInstance = event.target.result;
+            resolve(dbInstance);
+        };
+        request.onerror = event => {
+            console.error('IndexedDB Error:', event.target.errorCode);
+            reject(event.target.error);
+        };
+    });
+}
+
+function putData(idParam, payloadObj) {
+    if(!dbInstance) return;
+    return new Promise((resolve, reject) => {
+        const tx = dbInstance.transaction(STORE_NAME, 'readwrite');
+        const store = tx.objectStore(STORE_NAME);
+        store.put({ id: idParam, payload: payloadObj });
+        tx.oncomplete = () => resolve();
+        tx.onerror = () => reject(tx.error);
+    });
+}
+
+function getData(idParam) {
+    if(!dbInstance) return Promise.resolve(null);
+    return new Promise((resolve, reject) => {
+        const tx = dbInstance.transaction(STORE_NAME, 'readonly');
+        const store = tx.objectStore(STORE_NAME);
+        const req = store.get(idParam);
+        req.onsuccess = () => resolve(req.result ? req.result.payload : null);
+        req.onerror = () => reject(req.error);
+    });
+}
+
+function getAllKeys() {
+    if(!dbInstance) return Promise.resolve([]);
+    return new Promise((resolve, reject) => {
+        const tx = dbInstance.transaction(STORE_NAME, 'readonly');
+        const store = tx.objectStore(STORE_NAME);
+        const req = store.getAllKeys();
+        req.onsuccess = () => resolve(req.result);
+        req.onerror = () => reject(req.error);
+    });
+}
 
 let autoSaveTimeout = null;
 let currentReportId = '';
@@ -70,31 +123,33 @@ function compressImage(file, maxWidth, callback) {
 function initApp() {
     setupWeatherTable();
     setupAutoGrow();
-    try { initCalendar(); } catch(e) { console.error(e); }
-    
-    const todayStr = new Date().toISOString().split('T')[0];
-    const urlParams = new URLSearchParams(window.location.search);
-    const dateParam = urlParams.get('id');
-    const dateInput = document.getElementById('report-date');
+    initDB().then(() => {
+        try { initCalendar(); } catch(e) { console.error(e); }
+        
+        const todayStr = new Date().toISOString().split('T')[0];
+        const urlParams = new URLSearchParams(window.location.search);
+        const dateParam = urlParams.get('id');
+        const dateInput = document.getElementById('report-date');
 
-    if (dateParam) {
-        if (dateInput) dateInput.value = dateParam;
-        try { loadCloudReport(dateParam); } catch(e) { console.error(e); }
-    } else {
-        if (dateInput) dateInput.value = todayStr;
-        try { loadCloudReport(todayStr); } catch(e) { console.error(e); }
-    }
+        if (dateParam) {
+            if (dateInput) dateInput.value = dateParam;
+            try { loadCloudReport(dateParam); } catch(e) { console.error(e); }
+        } else {
+            if (dateInput) dateInput.value = todayStr;
+            try { loadCloudReport(todayStr); } catch(e) { console.error(e); }
+        }
 
-    if (dateInput) {
-        dateInput.addEventListener('change', function (e) {
-            window.history.pushState({}, '', '?id=' + e.target.value);
-            loadCloudReport(e.target.value);
-        });
-    }
+        if (dateInput) {
+            dateInput.addEventListener('change', function (e) {
+                window.history.pushState({}, '', '?id=' + e.target.value);
+                loadCloudReport(e.target.value);
+            });
+        }
+    }).catch(e => console.error("Fallo general DB:", e));
 }
 
 // ============================================
-// CLOUD SYNC LOGIC (SUPABASE)
+// OFFLINE SYNC LOGIC
 // ============================================
 async function saveToCloud() {
     currentReportId = document.getElementById('report-date').value;
@@ -105,30 +160,16 @@ async function saveToCloud() {
         reportData = serializeForm(currentReportId);
     } catch (err) {
         console.error("Error al serializar:", err);
-        updateSyncStatus('Error interno al serializar', false);
+        updateSyncStatus('Error', false);
         return;
     }
     
-    // Función recursiva para sanitizar undefined (Supabase también prefiere limpieza)
-    function sanitize(obj) {
-        Object.keys(obj).forEach(key => {
-            if (obj[key] === undefined) obj[key] = null;
-            else if (typeof obj[key] === 'object' && obj[key] !== null) sanitize(obj[key]);
-        });
-        return obj;
-    }
-    
-    reportData = sanitize(reportData);
-    
-    const { data, error } = await supabase
-        .from('reports')
-        .upsert({ id: currentReportId, payload: reportData });
-        
-    if (error) {
-        console.error("Supabase Reject:", error);
-        updateSyncStatus('Error de Base de Datos', false);
-    } else {
-        updateSyncStatus('Sincronizado', true);
+    try {
+        await putData(currentReportId, reportData);
+        updateSyncStatus('Guardado Local', true);
+    } catch (err) {
+        console.error("Local Error:", err);
+        updateSyncStatus('Fallo de Guardado', false);
     }
 }
 
@@ -136,27 +177,19 @@ async function loadCloudReport(dateStr) {
     currentReportId = dateStr;
     updateSyncStatus('Cargando...', false);
     
-    const { data, error } = await supabase
-        .from('reports')
-        .select('payload')
-        .eq('id', dateStr)
-        .single();
-        
-    if (error && error.code !== 'PGRST116') { // PGRST116 is "no rows returned"
-        console.error("Supabase Read Error:", error);
+    try {
+        const payload = await getData(dateStr);
+        if (payload) {
+            deserializeForm(payload);
+        } else {
+            clearFormAndSetDate(dateStr);
+            saveToCloud();
+        }
+        updateSyncStatus('Cargado Local', true);
+    } catch (err) {
+        console.error("Local Read Error:", err);
         updateSyncStatus('Fallo de Lectura', false);
-        return;
     }
-
-    if (data && data.payload) {
-        try {
-            deserializeForm(data.payload);
-        } catch(e) { console.error("Error al pintar informe", e); }
-    } else {
-        clearFormAndSetDate(dateStr);
-        saveToCloud();
-    }
-    updateSyncStatus('Sincronizado', true);
 }
 
 function _triggerSave() {
@@ -596,13 +629,9 @@ window.changeMonth = function(offset) {
 function initCalendar() {
     const grid = document.getElementById('calendar-grid');
     if (!grid) return;
-
-    supabase.from('reports').select('id').then(({data, error}) => {
-        if (error && error.code !== 'PGRST116') {
-            console.error("Calendar fetch error:", error.message);
-            return;
-        }
-        const completedLogs = data ? data.map(row => row.id) : [];
+    // Re-fetch keys from Local DB
+    getAllKeys().then((keys) => {
+        const completedLogs = keys || [];
         
         grid.innerHTML = '';
         const now = new Date();
@@ -655,28 +684,5 @@ function initCalendar() {
     }).catch(err => console.error(err));
 }
 
-// ---------------------------------------------
-// Share Link Functionality
-// ---------------------------------------------
-window.copyShareLink = function() {
-    const id = document.getElementById('report-date').value;
-    if(!id) {
-        alert("Por favor selecciona una fecha primero.");
-        return;
-    }
-    const currentUrl = window.location.href;
-    const baseUrl = currentUrl.substring(0, currentUrl.lastIndexOf('/'));
-    const link = `${baseUrl}/view.html?id=${id}`;
-    
-    navigator.clipboard.writeText(link).then(() => {
-        const btn = document.getElementById('btn-share');
-        const orig = btn.innerHTML;
-        btn.innerHTML = '<i class="fas fa-check"></i> Copiado!';
-        setTimeout(() => btn.innerHTML = orig, 3000);
-    }).catch(err => {
-        prompt("Copia este enlace:", link);
-    });
-}
-
-// Notifications Logic Removed for Cloud Version to avoid double popups
+// (Removed link copy functionality as requested)
 
