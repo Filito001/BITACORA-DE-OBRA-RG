@@ -16,7 +16,11 @@
     <div class="layout-wrapper">
         <aside class="calendar-sidebar noprint">
             <h3 class="calendar-title"><i class="far fa-calendar-check"></i> Registro del Mes</h3>
-            <div id="calendar-header" class="calendar-header"></div>
+            <div class="calendar-nav">
+                <button class="btn-cal-nav" onclick="changeMonth(-1)"><i class="fas fa-chevron-left"></i></button>
+                <div id="calendar-header" class="calendar-header"></div>
+                <button class="btn-cal-nav" onclick="changeMonth(1)"><i class="fas fa-chevron-right"></i></button>
+            </div>
             <div class="calendar-days-header">
                 <span>L</span><span>M</span><span>M</span><span>J</span><span>V</span><span>S</span><span>D</span>
             </div>
@@ -29,21 +33,39 @@
         
         <!-- Header Section -->
         <header class="header-section">
-            <div class="header-title">
-                <h1>INFORME DIARIO DE INTERVENTORÍA</h1>
-                <div class="subtitle-group">
-                    <label>OBRA:</label>
-                    <input type="text" id="obra-name" value="Reserva de Guance" class="editable-input bold-text" />
+            <div class="header-left">
+                <div class="header-logo-box">
+                    <div class="logo-wrapper">
+                        <img src="logo-reserva.png" alt="Reserva de Guance" class="header-logo-img" />
+                    </div>
                 </div>
             </div>
-            <div class="header-meta">
-                <div class="meta-item">
-                    <label>Código:</label>
-                    <input type="text" value="" class="editable-input" placeholder="Opcional..." />
+
+            <div class="header-center">
+                <div class="header-title">
+                    <h1>INFORME DIARIO DE INTERVENTORÍA</h1>
+                    <div class="subtitle-group">
+                        <label>OBRA:</label>
+                        <input type="text" id="obra-name" value="Reserva de Guance" class="editable-input bold-text" />
+                    </div>
                 </div>
-                <div class="meta-item">
-                    <label>Versión:</label>
-                    <input type="text" value="01" class="editable-input" />
+            </div>
+
+            <div class="header-right">
+                <div class="header-logo-box">
+                    <div class="logo-wrapper">
+                        <img src="logo-serra.png" alt="Serra I-A" class="header-logo-img" />
+                    </div>
+                </div>
+                <div class="header-meta">
+                    <div class="meta-item">
+                        <label>Código:</label>
+                        <input type="text" value="" class="editable-input" placeholder="Opcional..." />
+                    </div>
+                    <div class="meta-item">
+                        <label>Versión:</label>
+                        <input type="text" value="01" class="editable-input" />
+                    </div>
                 </div>
             </div>
         </header>
@@ -77,10 +99,10 @@
                     <thead>
                         <tr>
                             <td rowspan="2" class="th-label">ESTADO DEL TIEMPO</td>
-                            <td colspan="6" class="th-sec-lluvia">
+                            <td colspan="12" class="th-sec-lluvia">
                                 <div class="estado-legend">
-                                    <span class="legend-item"><div class="color-box sec"></div>SECO</span>
-                                    <span class="legend-item"><div class="color-box base-lluvia"></div>LLUVIA</span>
+                                    <span class="legend-item sec"><i class="fas fa-sun"></i> SECO</span>
+                                    <span class="legend-item lluvia"><i class="fas fa-cloud-rain"></i> LLUVIA</span>
                                 </div>
                             </td>
                         </tr>
@@ -227,18 +249,13 @@ Oficios varios</textarea></td>
         </section>
 
         <!-- Signatures Section -->
-        <section class="signatures-section">
-            <div class="signature-box">
-                <div class="sign-line"></div>
-                <input type="text" class="editable-input bold-text text-center" value="Arq. Filemón Arias" />
-                <input type="text" class="editable-input text-center text-sm" value="Residente de Interventoría" />
-                <input type="text" class="editable-input text-center text-sm" value="SERRA I&A S.A.S" />
+        <section class="section-block page-break-before">
+            <div class="section-header">
+                <h2 class="section-title">FIRMAS</h2>
+                <button class="btn-add noprint" onclick="addSignatureBox()"><i class="fas fa-plus"></i> Añadir Firma</button>
             </div>
-            <div class="signature-box">
-                <div class="sign-line"></div>
-                <input type="text" class="editable-input bold-text text-center" value="Arq. Wilmer" />
-                <input type="text" class="editable-input text-center text-sm" value="Residente de Obra" />
-                <input type="text" class="editable-input text-center text-sm" value="PORTICO" />
+            <div class="signatures-section" id="signatures-container">
+                <!-- JS will populate signatures here -->
             </div>
         </section>
         
