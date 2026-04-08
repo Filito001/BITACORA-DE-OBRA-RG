@@ -1,63 +1,180 @@
-document.addEventListener("DOMContentLoaded", () => {
-    // 1. Database Init and Preload
-    initIndexedDB(() => {
-        const dateInput = document.getElementById('report-date');
-        if (dateInput) {
-            const today = new Date().toISOString().split('T')[0];
-            
-            // On load, attempt to load today's current saved file if any
-            loadLogFromDB(today, () => {
-                // If nothing was found, at least set date and defaults
-                clearFormAndSetDate(today);
-            });
-        }
-        initCalendar();
-        setupNotifications();
-    });
+// ============================================
+// FIREBASE CONFIGURATION
+// ============================================
+const firebaseConfig = {
+    apiKey: "AIzaSyCMX0XS9PW-ftdxTyfXIPx7EhBNnyHkWaI",
+    authDomain: "bitacora-de-obra-rg.firebaseapp.com",
+    projectId: "bitacora-de-obra-rg",
+    storageBucket: "bitacora-de-obra-rg.firebasestorage.app",
+    messagingSenderId: "296530875584",
+    appId: "1:296530875584:web:baf85905206caecc58c925"
+};
 
-    // 2. Setup Weather Interactive Table
-    setupWeatherTable();
+// Inicializar Firebase Compat V10
+firebase.initializeApp(firebaseConfig);
+const auth = firebase.auth();
+const db = firebase.firestore();
 
-    // 3. Auto-grow Textareas
-    setupAutoGrow();
+let currentUser = null;
+let autoSaveTimeout = null;
+let currentReportId = '';
+
+// ============================================
+// AUTHENTICATION LOGIC
+// ============================================
+auth.onAuthStateChanged(user => {
+    if (user) {
+        currentUser = user;
+        const loginOverlay = document.getElementById('login-overlay');
+        if (loginOverlay) loginOverlay.style.display = 'none';
+        initApp();
+    } else {
+        currentUser = null;
+        const loginOverlay = document.getElementById('login-overlay');
+        if (loginOverlay) loginOverlay.style.display = 'flex';
+    }
 });
 
-// Auto-grow textareas to fit content
+window.handleLogin = function() {
+    const email = document.getElementById('login-email').value;
+    const pass = document.getElementById('login-pass').value;
+    const errObj = document.getElementById('login-error');
+    
+    if(!email || !pass) {
+        errObj.textContent = "Ingrese correo y contraseña";
+        errObj.style.display = "block";
+        return;
+    }
+    
+    auth.signInWithEmailAndPassword(email, pass)
+    .catch(error => {
+        errObj.textContent = "Error: " + error.message;
+        errObj.style.display = "block";
+    });
+}
+
+window.handleLogout = function() {
+    auth.signOut();
+}
+
+// trigger autosave on any input change
+document.addEventListener('input', function(e) {
+    if (!currentUser || !currentReportId) return;
+    if (e.target.matches('input, textarea')) {
+        updateSyncStatus('Guardando...', false);
+        clearTimeout(autoSaveTimeout);
+        autoSaveTimeout = setTimeout(() => saveToCloud(), 1000);
+    }
+});
+
+function updateSyncStatus(statusMsg, isOk = true) {
+    const stTag = document.getElementById('sync-status');
+    const txtTag = document.getElementById('sync-text');
+    if(!stTag || !txtTag) return;
+    
+    txtTag.textContent = statusMsg;
+    stTag.className = 'sync-status ' + (isOk ? 'ok' : 'syncing');
+}
+
+// ============================================
+// APP LOGIC
+// ============================================
+
+function initApp() {
+    setupWeatherTable();
+    setupAutoGrow();
+    initCalendar();
+    
+    const queryParams = new URLSearchParams(window.location.search);
+    const idParam = queryParams.get('id');
+    
+    const today = idParam ? idParam : new Date().toISOString().split('T')[0];
+    const dateInput = document.getElementById('report-date');
+    if (dateInput) dateInput.value = today;
+    
+    loadCloudReport(today);
+
+    if (dateInput) {
+        dateInput.addEventListener('change', function (e) {
+            window.history.pushState({}, '', '?id=' + e.target.value);
+            loadCloudReport(e.target.value);
+        });
+    }
+}
+
+function saveToCloud() {
+    if (!currentUser) return;
+    currentReportId = document.getElementById('report-date').value;
+    if (!currentReportId) return;
+    
+    const data = serializeForm(currentReportId);
+    
+    db.collection('reports').doc(currentReportId).set(data)
+        .then(() => {
+            updateSyncStatus('Sincronizado', true);
+        })
+        .catch(err => {
+            console.error(err);
+            updateSyncStatus('Error al guardar', false);
+        });
+}
+
+function loadCloudReport(dateStr) {
+    currentReportId = dateStr;
+    updateSyncStatus('Cargando...', false);
+    
+    db.collection('reports').doc(dateStr).get()
+        .then(doc => {
+            if (doc.exists) {
+                deserializeForm(doc.data());
+            } else {
+                clearFormAndSetDate(dateStr);
+                saveToCloud();
+            }
+            updateSyncStatus('Sincronizado', true);
+        })
+        .catch(err => {
+            console.error(err);
+            updateSyncStatus('Error lectura', false);
+        });
+}
+
+function _triggerSave() {
+    clearTimeout(autoSaveTimeout);
+    updateSyncStatus('Guardando...', false);
+    autoSaveTimeout = setTimeout(() => saveToCloud(), 500);
+}
+
+// Auto-grow textareas
+window.autoGrow = function(element) {
+    element.style.height = 'auto';
+    element.style.height = (element.scrollHeight) + 'px';
+}
+
 function setupAutoGrow() {
     document.addEventListener('input', function (event) {
         if (event.target.tagName.toLowerCase() === 'textarea' && event.target.classList.contains('auto-grow')) {
             autoGrow(event.target);
         }
     });
-    // Global checking
-    document.querySelectorAll('textarea.auto-grow').forEach(ta => autoGrow(ta));
-}
-
-window.autoGrow = function(element) {
-    element.style.height = 'auto';
-    element.style.height = (element.scrollHeight) + 'px';
 }
 
 // Weather Slots Logic
 function setupWeatherTable() {
     const slotsRow = document.getElementById('weather-slots');
     if (!slotsRow) return;
+    slotsRow.innerHTML = '';
 
     for (let i = 0; i < 12; i++) {
         const td = document.createElement('td');
         td.dataset.state = 0;
-        
         td.innerHTML = `<div class="w-cell"></div>`;
-        
         td.addEventListener('click', function() {
             let currentState = parseInt(this.dataset.state);
             currentState = (currentState + 1) % 3;
-            
             this.dataset.state = currentState;
-            
             const cell = this.querySelector('.w-cell');
             cell.className = 'w-cell';
-
             if (currentState === 1) {
                 cell.classList.add('w-sec');
                 cell.innerHTML = '<i class="fas fa-sun"></i>';
@@ -67,24 +184,44 @@ function setupWeatherTable() {
             } else {
                 cell.innerHTML = '';
             }
+            _triggerSave();
         });
-        
         slotsRow.appendChild(td);
     }
 }
 
 // Table Rows Manipulations
 window.removeRow = function(btn) {
-    const row = btn.closest('tr');
-    if(row) row.remove();
+    btn.closest('tr').remove();
+    _triggerSave();
 }
 
 window.addPersonRow = function() {
-    addPersonRowWithData(["", "", ""]);
+    const tbody = document.getElementById('personnel-body');
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+        <td><textarea class="editable-input full-width auto-grow" rows="1"></textarea></td>
+        <td><textarea class="editable-input full-width auto-grow" rows="1"></textarea></td>
+        <td><textarea class="editable-input full-width auto-grow" rows="1"></textarea></td>
+        <td class="noprint text-center"><button class="btn-delete" onclick="removeRow(this)"><i class="fas fa-trash"></i></button></td>
+    `;
+    tbody.appendChild(tr);
+    _triggerSave();
 }
 
 window.addMaterialRow = function() {
-    addMaterialRowWithData(["", "", "", "", ""]);
+    const tbody = document.getElementById('materials-body');
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+        <td><input type="date" class="editable-input full-width" /></td>
+        <td><input type="time" class="editable-input full-width" /></td>
+        <td><textarea class="editable-input full-width auto-grow" rows="1"></textarea></td>
+        <td><input type="text" class="editable-input full-width" /></td>
+        <td><textarea class="editable-input full-width auto-grow" rows="1"></textarea></td>
+        <td class="noprint text-center"><button class="btn-delete" onclick="removeRow(this)"><i class="fas fa-trash"></i></button></td>
+    `;
+    tbody.appendChild(tr);
+    _triggerSave();
 }
 
 function addPersonRowWithData(dataArr) {
@@ -123,9 +260,7 @@ window.addSignatureBox = function(dataArr = ["", "", "", ""]) {
     const uniqueId = 'sig-upload-' + Math.random().toString(36).substr(2, 9);
     box.className = 'signature-box';
     box.style.position = 'relative';
-    
     const imgHtml = dataArr[3] ? `<img src="${dataArr[3]}" class="signature-img" />` : '';
-
     box.innerHTML = `
         <div class="signature-img-container">
             ${imgHtml}
@@ -137,9 +272,14 @@ window.addSignatureBox = function(dataArr = ["", "", "", ""]) {
         <input type="text" class="editable-input text-center text-sm full-width sig-role" value="${dataArr[1] || ''}" placeholder="Cargo" />
         <input type="text" class="editable-input text-center text-sm full-width sig-company" value="${dataArr[2] || ''}" placeholder="Empresa" />
         <input type="hidden" class="sig-base64" value="${dataArr[3] || ''}" />
-        <button class="btn-delete signature-delete-btn noprint" onclick="this.parentElement.remove()" style="position: absolute; top: -5px; right: 0; padding: 2px;"><i class="fas fa-times"></i></button>
+        <button class="btn-delete signature-delete-btn noprint" onclick="removeSignatureBox(this)" style="position: absolute; top: -5px; right: 0; padding: 2px;"><i class="fas fa-times"></i></button>
     `;
     container.appendChild(box);
+}
+
+window.removeSignatureBox = function(btn) {
+    btn.closest('.signature-box').remove();
+    _triggerSave();
 }
 
 window.handleSignatureUpload = function(event, inputElem) {
@@ -156,50 +296,22 @@ window.handleSignatureUpload = function(event, inputElem) {
         }
         img.src = e.target.result;
         box.querySelector('.sig-base64').value = e.target.result;
+        _triggerSave();
     };
     reader.readAsDataURL(file);
-    event.target.value = '';
 }
 
-// Photo Uploads
+// Photos
 window.handleImageUpload = function(event) {
     const files = event.target.files;
     if (!files || files.length === 0) return;
-
-    const emptyMsg = document.getElementById('empty-photos-msg');
-    if (emptyMsg) emptyMsg.style.display = 'none';
-
     Array.from(files).forEach(file => {
         if (!file.type.startsWith('image/')) return;
         const reader = new FileReader();
-        reader.onload = function(e) {
-            injectPhoto(e.target.result, "");
-        };
+        reader.onload = function(e) { injectPhoto(e.target.result, ""); };
         reader.readAsDataURL(file);
     });
-    event.target.value = '';
 }
-
-// Clipboard Paste Support for Photos
-window.addEventListener('paste', function(e) {
-    const items = (e.clipboardData || window.clipboardData).items;
-    if (!items) return;
-
-    for (let i = 0; i < items.length; i++) {
-        if (items[i].type.indexOf('image/') !== -1) {
-            const file = items[i].getAsFile();
-            if (file) {
-                const reader = new FileReader();
-                reader.onload = function(event) {
-                    injectPhoto(event.target.result, '');
-                    const emptyMsg = document.getElementById('empty-photos-msg');
-                    if (emptyMsg) emptyMsg.style.display = 'none';
-                };
-                reader.readAsDataURL(file);
-            }
-        }
-    }
-});
 
 function injectPhoto(imgSrc, captionStr = '') {
     const grid = document.getElementById('photos-grid');
@@ -211,14 +323,13 @@ function injectPhoto(imgSrc, captionStr = '') {
             <button class="photo-remove-btn noprint" onclick="removePhoto(this)"><i class="fas fa-times"></i></button>
         </div>
         <div class="photo-caption">
-            <textarea class="editable-input full-width auto-grow" rows="2" placeholder="Describa la actividad en la foto...">${captionStr}</textarea>
+            <textarea class="editable-input full-width auto-grow" rows="2" placeholder="Describa la actividad...">${captionStr}</textarea>
         </div>
     `;
     grid.appendChild(photoItem);
-    const newTextarea = photoItem.querySelector('textarea');
-    if (newTextarea) autoGrow(newTextarea);
-
-    document.getElementById('empty-photos-msg').style.display = 'none';
+    const emptyMsg = document.getElementById('empty-photos-msg');
+    if (emptyMsg) emptyMsg.style.display = 'none';
+    _triggerSave();
 }
 
 window.removePhoto = function(btn) {
@@ -230,53 +341,13 @@ window.removePhoto = function(btn) {
             const emptyMsg = document.getElementById('empty-photos-msg');
             if (emptyMsg) emptyMsg.style.display = 'flex';
         }
+        _triggerSave();
     }
 }
 
-// =========================================================
-// INDEXEDDB OFFLINE STORAGE LOGIC
-// =========================================================
-const DB_NAME = "BitacorasOfflineDB";
-const DB_VERSION = 1;
-window.db = null;
-
-function initIndexedDB(callback) {
-    const request = indexedDB.open(DB_NAME, DB_VERSION);
-    request.onerror = (e) => console.error("Database error: ", e);
-    request.onupgradeneeded = (e) => {
-        const dbInstance = e.target.result;
-        if (!dbInstance.objectStoreNames.contains("logs")) {
-            dbInstance.createObjectStore("logs", { keyPath: "date" });
-        }
-    };
-    request.onsuccess = (e) => {
-        window.db = e.target.result;
-        console.log("Database initialized successfully.");
-        if (callback) callback();
-    };
-}
-
-function getAllKeys(callback) {
-    if (!window.db) return callback([]);
-    const tx = window.db.transaction("logs", "readonly");
-    const req = tx.objectStore("logs").getAllKeys();
-    req.onsuccess = () => callback(req.result || []);
-}
-
-function loadLogFromDB(dateStr, notFoundCallback) {
-    if (!window.db) return;
-    const tx = window.db.transaction("logs", "readonly");
-    const req = tx.objectStore("logs").get(dateStr);
-    req.onsuccess = () => {
-        if (req.result) {
-            deserializeForm(req.result);
-        } else {
-            if (notFoundCallback) notFoundCallback();
-        }
-    };
-}
-
+// ---------------------------------------------
 // The core export and print feature
+// ---------------------------------------------
 window.exportAndPrint = function() {
     const dateInput = document.getElementById('report-date').value;
     if (!dateInput) {
@@ -284,18 +355,9 @@ window.exportAndPrint = function() {
         return;
     }
 
-    const dataObj = serializeForm(dateInput);
-    
-    // Save to Database
-    const tx = window.db.transaction("logs", "readwrite");
-    const store = tx.objectStore("logs");
-    store.put(dataObj);
-
-    tx.oncomplete = () => {
-        initCalendar(); // Refresh Side Calendar
-        // Small delay to ensure rendering finished before print wrapper halts engine
-        setTimeout(() => window.print(), 100);
-    };
+    saveToCloud();
+    initCalendar(); // Refresh Side Calendar
+    setTimeout(() => window.print(), 300);
 }
 
 // Grabs all values from DOM into a neat JSON
@@ -490,8 +552,13 @@ window.changeMonth = function(offset) {
 function initCalendar() {
     const grid = document.getElementById('calendar-grid');
     if (!grid) return;
+    if (!currentUser) return; // Only process if authed
 
-    getAllKeys((completedLogs) => {
+    // Re-fetch keys from firestore (all doc ids)
+    db.collection('reports').get().then(snapshot => {
+        const completedLogs = [];
+        snapshot.forEach(doc => completedLogs.push(doc.id));
+        
         grid.innerHTML = '';
         const now = new Date();
         const todayStr = new Date(now.getTime() - now.getTimezoneOffset() * 60000).toISOString().split('T')[0];
@@ -527,58 +594,21 @@ function initCalendar() {
                 }
             }
 
-            // Click interaction to load historical data
             dayDiv.onclick = () => {
-                const isSaved = completedLogs.includes(loopDateStr);
-                
-                // Adding a sleek visual feedback 
                 grid.querySelectorAll('.cal-day').forEach(d => d.style.boxShadow = 'none');
                 dayDiv.style.boxShadow = 'inset 0 0 0 2px var(--accent)';
-
-                if (isSaved) {
-                    loadLogFromDB(loopDateStr);
-                } else {
-                    clearFormAndSetDate(loopDateStr);
-                }
                 
-                // Focus on top of document so mobile user knows form was updated
+                document.getElementById('report-date').value = loopDateStr;
+                window.history.pushState({}, '', '?id=' + loopDateStr);
+                loadCloudReport(loopDateStr);
+                
                 window.scrollTo({ top: 0, behavior: 'smooth' });
             };
 
             grid.appendChild(dayDiv);
         }
-    });
+    }).catch(err => console.error(err));
 }
 
-// =========================================================
-// NOTIFICATION LOGIC
-// =========================================================
-let notificationShownToday = false;
+// Notifications Logic Removed for Cloud Version to avoid double popups
 
-function setupNotifications() {
-    if (!("Notification" in window)) return;
-    if (Notification.permission !== "denied" && Notification.permission !== "granted") {
-        Notification.requestPermission();
-    }
-    setInterval(checkReminder, 60000);
-    checkReminder();
-}
-
-function checkReminder() {
-    const now = new Date();
-    const todayStr = new Date(now.getTime() - now.getTimezoneOffset() * 60000).toISOString().split('T')[0];
-
-    getAllKeys((completedLogs) => {
-        if (now.getHours() >= 16) {
-            if (!completedLogs.includes(todayStr) && !notificationShownToday) {
-                if (Notification.permission === "granted") {
-                    new Notification("¡Recordatorio de Bitácora!", {
-                        body: "Ya son más de las 4 PM. No olvides registrar la bitácora de obra de hoy.",
-                        icon: "https://cdn-icons-png.flaticon.com/512/2832/2832810.png"
-                    });
-                    notificationShownToday = true;
-                }
-            }
-        }
-    });
-}
