@@ -1,65 +1,23 @@
 // ============================================
-// FIREBASE CONFIGURATION
+// SUPABASE CONFIGURATION
 // ============================================
-const firebaseConfig = {
-    apiKey: "AIzaSyCMX0XS9PW-ftdxTyfXIPx7EhBNnyHkWaI",
-    authDomain: "bitacora-de-obra-rg.firebaseapp.com",
-    projectId: "bitacora-de-obra-rg",
-    storageBucket: "bitacora-de-obra-rg.firebasestorage.app",
-    messagingSenderId: "296530875584",
-    appId: "1:296530875584:web:baf85905206caecc58c925"
-};
+const supabaseUrl = 'https://khpvlbcfnelrnnycctfb.supabase.co';
+const supabaseKey = 'sb_publishable_JYjyOW3jkW7x8FUm3EQgXQ_Bs9nYiNl';
+const supabase = window.supabase.createClient(supabaseUrl, supabaseKey);
 
-// Inicializar Firebase Compat V10
-firebase.initializeApp(firebaseConfig);
-const auth = firebase.auth();
-const db = firebase.firestore();
-
-let currentUser = null;
 let autoSaveTimeout = null;
 let currentReportId = '';
 
-// ============================================
-// AUTHENTICATION LOGIC
-// ============================================
-auth.onAuthStateChanged(user => {
-    if (user) {
-        currentUser = user;
-        const loginOverlay = document.getElementById('login-overlay');
-        if (loginOverlay) loginOverlay.style.display = 'none';
-        initApp();
-    } else {
-        currentUser = null;
-        const loginOverlay = document.getElementById('login-overlay');
-        if (loginOverlay) loginOverlay.style.display = 'flex';
-    }
+// Quitamos el overlay de login ya que usaremos RLS desactivado y URLs ocultas
+document.addEventListener('DOMContentLoaded', () => {
+    const loginOverlay = document.getElementById('login-overlay');
+    if (loginOverlay) loginOverlay.style.display = 'none';
+    initApp();
 });
-
-window.handleLogin = function() {
-    const email = document.getElementById('login-email').value;
-    const pass = document.getElementById('login-pass').value;
-    const errObj = document.getElementById('login-error');
-    
-    if(!email || !pass) {
-        errObj.textContent = "Ingrese correo y contraseña";
-        errObj.style.display = "block";
-        return;
-    }
-    
-    auth.signInWithEmailAndPassword(email, pass)
-    .catch(error => {
-        errObj.textContent = "Error: " + error.message;
-        errObj.style.display = "block";
-    });
-}
-
-window.handleLogout = function() {
-    auth.signOut();
-}
 
 // trigger autosave on any input change
 document.addEventListener('input', function(e) {
-    if (!currentUser || !currentReportId) return;
+    if (!currentReportId) return;
     if (e.target.matches('input, textarea')) {
         updateSyncStatus('Guardando...', false);
         clearTimeout(autoSaveTimeout);
@@ -131,21 +89,23 @@ function initApp() {
     }
 }
 
-function saveToCloud() {
-    if (!currentUser) return;
+// ============================================
+// CLOUD SYNC LOGIC (SUPABASE)
+// ============================================
+async function saveToCloud() {
     currentReportId = document.getElementById('report-date').value;
     if (!currentReportId) return;
     
-    let data;
+    let reportData;
     try {
-        data = serializeForm(currentReportId);
+        reportData = serializeForm(currentReportId);
     } catch (err) {
         console.error("Error al serializar:", err);
         updateSyncStatus('Error interno al serializar', false);
         return;
     }
     
-    // Función recursiva para sanitizar undefined antes de enviar a Firestore (Firestore odia los undefined)
+    // Función recursiva para sanitizar undefined (Supabase también prefiere limpieza)
     function sanitize(obj) {
         Object.keys(obj).forEach(key => {
             if (obj[key] === undefined) obj[key] = null;
@@ -154,40 +114,45 @@ function saveToCloud() {
         return obj;
     }
     
-    data = sanitize(data);
+    reportData = sanitize(reportData);
     
-    db.collection('reports').doc(currentReportId).set(data)
-        .then(() => {
-            updateSyncStatus('Sincronizado', true);
-        })
-        .catch(err => {
-            console.error("Firestore Reject:", err);
-            updateSyncStatus('Error de Permisos en Base de Datos', false);
-            alert("Error de Permisos o Red: " + err.message + "\n\nAsegúrate de que Creaste la Base de Datos 'Firestore Database' desde Firebase y que le pusiste 'Empezar en Modo Prueba'.");
-        });
+    const { data, error } = await supabase
+        .from('reports')
+        .upsert({ id: currentReportId, payload: reportData });
+        
+    if (error) {
+        console.error("Supabase Reject:", error);
+        updateSyncStatus('Error de Base de Datos', false);
+    } else {
+        updateSyncStatus('Sincronizado', true);
+    }
 }
 
-function loadCloudReport(dateStr) {
+async function loadCloudReport(dateStr) {
     currentReportId = dateStr;
     updateSyncStatus('Cargando...', false);
     
-    db.collection('reports').doc(dateStr).get()
-        .then(doc => {
-            if (doc.exists) {
-                try {
-                    deserializeForm(doc.data());
-                } catch(e) { console.error("Error al pintar informe", e); }
-            } else {
-                clearFormAndSetDate(dateStr);
-                saveToCloud();
-            }
-            updateSyncStatus('Sincronizado', true);
-        })
-        .catch(err => {
-            console.error("Firestore Read Edit:", err);
-            updateSyncStatus('Fallo de Lectura (Permisos)', false);
-            alert("Firebase bloqueó la lectura.\nProblema Clásico: No habilitaste 'Firestore Database' en tu panel de Google Firebase, O faltan los permisos.\nEntra al panel, clíca en Compilación > Firestore Database y 'Crear base de datos' en modo Prueba.");
-        });
+    const { data, error } = await supabase
+        .from('reports')
+        .select('payload')
+        .eq('id', dateStr)
+        .single();
+        
+    if (error && error.code !== 'PGRST116') { // PGRST116 is "no rows returned"
+        console.error("Supabase Read Error:", error);
+        updateSyncStatus('Fallo de Lectura', false);
+        return;
+    }
+
+    if (data && data.payload) {
+        try {
+            deserializeForm(data.payload);
+        } catch(e) { console.error("Error al pintar informe", e); }
+    } else {
+        clearFormAndSetDate(dateStr);
+        saveToCloud();
+    }
+    updateSyncStatus('Sincronizado', true);
 }
 
 function _triggerSave() {
