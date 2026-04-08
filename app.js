@@ -180,6 +180,27 @@ window.handleImageUpload = function(event) {
     event.target.value = '';
 }
 
+// Clipboard Paste Support for Photos
+window.addEventListener('paste', function(e) {
+    const items = (e.clipboardData || window.clipboardData).items;
+    if (!items) return;
+
+    for (let i = 0; i < items.length; i++) {
+        if (items[i].type.indexOf('image/') !== -1) {
+            const file = items[i].getAsFile();
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(event) {
+                    injectPhoto(event.target.result, '');
+                    const emptyMsg = document.getElementById('empty-photos-msg');
+                    if (emptyMsg) emptyMsg.style.display = 'none';
+                };
+                reader.readAsDataURL(file);
+            }
+        }
+    }
+});
+
 function injectPhoto(imgSrc, captionStr = '') {
     const grid = document.getElementById('photos-grid');
     const photoItem = document.createElement('div');
