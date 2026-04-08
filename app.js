@@ -47,17 +47,25 @@ function setupWeatherTable() {
         const td = document.createElement('td');
         td.dataset.state = 0;
         
+        td.innerHTML = `<div class="w-cell"></div>`;
+        
         td.addEventListener('click', function() {
             let currentState = parseInt(this.dataset.state);
             currentState = (currentState + 1) % 3;
             
-            this.className = '';
             this.dataset.state = currentState;
+            
+            const cell = this.querySelector('.w-cell');
+            cell.className = 'w-cell';
 
             if (currentState === 1) {
-                this.classList.add('slot-sec');
+                cell.classList.add('w-sec');
+                cell.innerHTML = '<i class="fas fa-sun"></i>';
             } else if (currentState === 2) {
-                this.classList.add('slot-lluvia');
+                cell.classList.add('w-lluvia');
+                cell.innerHTML = '<i class="fas fa-cloud-rain"></i>';
+            } else {
+                cell.innerHTML = '';
             }
         });
         
@@ -105,6 +113,52 @@ function addMaterialRowWithData(dataArr) {
     `;
     tbody.appendChild(tr);
     tr.querySelectorAll('.auto-grow').forEach(ta => autoGrow(ta));
+}
+
+// Signatures
+window.addSignatureBox = function(dataArr = ["", "", "", ""]) {
+    const container = document.getElementById('signatures-container');
+    if (!container) return;
+    const box = document.createElement('div');
+    const uniqueId = 'sig-upload-' + Math.random().toString(36).substr(2, 9);
+    box.className = 'signature-box';
+    box.style.position = 'relative';
+    
+    const imgHtml = dataArr[3] ? `<img src="${dataArr[3]}" class="signature-img" />` : '';
+
+    box.innerHTML = `
+        <div class="signature-img-container">
+            ${imgHtml}
+            <label for="${uniqueId}" class="signature-upload-btn noprint"><i class="fas fa-upload"></i> Firma</label>
+            <input type="file" id="${uniqueId}" class="hidden" accept="image/*" onchange="handleSignatureUpload(event, this)" />
+        </div>
+        <div class="sign-line"></div>
+        <input type="text" class="editable-input bold-text text-center full-width sig-name" value="${dataArr[0] || ''}" placeholder="Nombre" />
+        <input type="text" class="editable-input text-center text-sm full-width sig-role" value="${dataArr[1] || ''}" placeholder="Cargo" />
+        <input type="text" class="editable-input text-center text-sm full-width sig-company" value="${dataArr[2] || ''}" placeholder="Empresa" />
+        <input type="hidden" class="sig-base64" value="${dataArr[3] || ''}" />
+        <button class="btn-delete signature-delete-btn noprint" onclick="this.parentElement.remove()" style="position: absolute; top: -5px; right: 0; padding: 2px;"><i class="fas fa-times"></i></button>
+    `;
+    container.appendChild(box);
+}
+
+window.handleSignatureUpload = function(event, inputElem) {
+    const file = event.target.files[0];
+    if (!file || !file.type.startsWith('image/')) return;
+    const reader = new FileReader();
+    reader.onload = function(e) {
+        const box = inputElem.closest('.signature-box');
+        let img = box.querySelector('.signature-img');
+        if (!img) {
+            img = document.createElement('img');
+            img.className = 'signature-img';
+            box.querySelector('.signature-img-container').prepend(img);
+        }
+        img.src = e.target.result;
+        box.querySelector('.sig-base64').value = e.target.result;
+    };
+    reader.readAsDataURL(file);
+    event.target.value = '';
 }
 
 // Photo Uploads
@@ -237,8 +291,22 @@ function serializeForm(dateStr) {
         notaClima: document.querySelectorAll('.precipitaciones-box textarea')[0].value,
         actividadesCampo: document.querySelectorAll('.textarea-container textarea')[0].value,
         recomendaciones: document.querySelectorAll('.textarea-container textarea')[1].value,
-        signatures: Array.from(document.querySelectorAll('.signature-box input')).map(inp => inp.value)
+        signatures: []
     };
+
+    // Serialize sign boxes specifically
+    document.querySelectorAll('.signature-box').forEach(box => {
+        const inputs = box.querySelectorAll('input[type="text"]');
+        const imgInput = box.querySelector('.sig-base64');
+        if (inputs.length >= 3) {
+            data.signatures.push({
+                nombre: inputs[0].value,
+                cargo: inputs[1].value,
+                empresa: inputs[2].value,
+                img: imgInput ? imgInput.value : ''
+            });
+        }
+    });
 
     // Personal dynamic rows
     data.personnel = [];
@@ -286,10 +354,24 @@ function deserializeForm(data) {
     if (data.weatherSlots) {
         data.weatherSlots.forEach((state, i) => {
             if (slots[i]) {
-                slots[i].dataset.state = state;
-                slots[i].className = '';
-                if(state == 1) slots[i].classList.add('slot-sec');
-                if(state == 2) slots[i].classList.add('slot-lluvia');
+                const td = slots[i];
+                td.dataset.state = state;
+                let cell = td.querySelector('.w-cell');
+                if (!cell) {
+                    td.innerHTML = `<div class="w-cell"></div>`;
+                    cell = td.querySelector('.w-cell');
+                }
+                cell.className = 'w-cell';
+                cell.innerHTML = '';
+                
+                if(state == 1) {
+                    cell.classList.add('w-sec');
+                    cell.innerHTML = '<i class="fas fa-sun"></i>';
+                }
+                if(state == 2) {
+                    cell.classList.add('w-lluvia');
+                    cell.innerHTML = '<i class="fas fa-cloud-rain"></i>';
+                }
             }
         });
     }
@@ -317,11 +399,22 @@ function deserializeForm(data) {
     }
 
     // Signatures
-    const sigInputs = document.querySelectorAll('.signature-box input');
-    if (data.signatures) {
-        data.signatures.forEach((val, i) => {
-            if (sigInputs[i]) sigInputs[i].value = val;
-        });
+    const container = document.getElementById('signatures-container');
+    if (container) container.innerHTML = '';
+    if (data.signatures && data.signatures.length > 0) {
+        if (typeof data.signatures[0] === 'string') {
+            // Backward compatibility
+            for (let i = 0; i < data.signatures.length; i += 3) {
+                window.addSignatureBox([data.signatures[i] || '', data.signatures[i+1] || '', data.signatures[i+2] || '', '']);
+            }
+        } else {
+            // New Array of Objects format
+            data.signatures.forEach(sig => {
+                window.addSignatureBox([sig.nombre || '', sig.cargo || '', sig.empresa || '', sig.img || '']);
+            });
+        }
+    } else {
+        window.addSignatureBox(["", "", "", ""]);
     }
 
     // Photos
@@ -340,12 +433,15 @@ function clearFormAndSetDate(dateStr) {
     const blank = {
         date: dateStr, obra: 'Reserva de Guance', codigo: '', version: '01', tiempo: '', temperatura: '',
         weatherSlots: Array(12).fill(0), precipitaciones: '', notaClima: '', actividadesCampo: '', recomendaciones: '',
-        signatures: ['Arq. Filemón Arias', 'Residente de Interventoría', 'SERRA I&A S.A.S', 'Arq. Wilmer', 'Residente de Obra', 'PORTICO'],
+        signatures: [
+            { nombre: 'Arq. Filemón Arias', cargo: 'Residente de Interventoría', empresa: 'SERRA I&A S.A.S', img: '' },
+            { nombre: 'Arq. Wilmer', cargo: 'Residente de Obra', empresa: 'PORTICO', img: '' }
+        ],
         personnel: [
             ['SERRA I&A S.A.S', '1 Profesional\n(Residente de interventoría)', 'Verificación y control de avance de obra'],
             ['PORTICO S.A.S', '1 Profesional\n(Residente de obra)', 'Ejecución de obra'],
             ['PORTICO S.A.S', '1 Ayudante de obra', 'Oficios varios'],
-            ['J&J Ingenieros Asociados', '1 Topógrafo\n1 Operario retroexcavadora\n1 SST\n1 Oficial', 'Tareas asignadas']
+            ['G&G Ingenieros Asociados', '1 Topógrafo\n1 Operario retroexcavadora\n1 SST\n1 Oficial', 'Tareas asignadas']
         ], 
         materials: [['', '', '', '', '']], photos: []
     };
@@ -355,6 +451,21 @@ function clearFormAndSetDate(dateStr) {
 // =========================================================
 // CALENDAR WIDGET LOGIC
 // =========================================================
+let currentDisplayedMonth = new Date().getMonth();
+let currentDisplayedYear = new Date().getFullYear();
+
+window.changeMonth = function(offset) {
+    currentDisplayedMonth += offset;
+    if (currentDisplayedMonth < 0) {
+        currentDisplayedMonth = 11;
+        currentDisplayedYear--;
+    } else if (currentDisplayedMonth > 11) {
+        currentDisplayedMonth = 0;
+        currentDisplayedYear++;
+    }
+    initCalendar();
+}
+
 function initCalendar() {
     const grid = document.getElementById('calendar-grid');
     if (!grid) return;
@@ -362,15 +473,13 @@ function initCalendar() {
     getAllKeys((completedLogs) => {
         grid.innerHTML = '';
         const now = new Date();
-        const currentMonth = now.getMonth();
-        const currentYear = now.getFullYear();
         const todayStr = new Date(now.getTime() - now.getTimezoneOffset() * 60000).toISOString().split('T')[0];
         
         document.getElementById('calendar-header').innerText = 
-            ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"][currentMonth] + " " + currentYear;
+            ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"][currentDisplayedMonth] + " " + currentDisplayedYear;
 
-        const firstDay = new Date(currentYear, currentMonth, 1);
-        const lastDay = new Date(currentYear, currentMonth + 1, 0);
+        const firstDay = new Date(currentDisplayedYear, currentDisplayedMonth, 1);
+        const lastDay = new Date(currentDisplayedYear, currentDisplayedMonth + 1, 0);
         let startDayOfWeek = firstDay.getDay() === 0 ? 6 : firstDay.getDay() - 1; 
 
         for (let i = 0; i < startDayOfWeek; i++) {
@@ -385,7 +494,7 @@ function initCalendar() {
             dayDiv.innerText = i;
             dayDiv.style.cursor = 'pointer';
             
-            const loopDateStr = `${currentYear}-${String(currentMonth + 1).padStart(2, '0')}-${String(i).padStart(2, '0')}`;
+            const loopDateStr = `${currentDisplayedYear}-${String(currentDisplayedMonth + 1).padStart(2, '0')}-${String(i).padStart(2, '0')}`;
 
             if (loopDateStr <= todayStr) {
                 if (completedLogs.includes(loopDateStr)) {
