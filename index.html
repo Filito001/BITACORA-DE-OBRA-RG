@@ -26,11 +26,9 @@
     <div class="actions noprint">
         <div style="display: flex; gap: 10px; align-items: center;">
             <button id="btn-print" onclick="exportAndPrint()"><i class="fas fa-print"></i> Exportar / Imprimir PDF</button>
-            <button id="btn-share" class="btn-share" onclick="copyShareLink()"><i class="fas fa-link"></i> Copiar Link Espectador</button>
         </div>
         <div>
-            <span id="sync-status" class="sync-status"><i class="fas fa-cloud"></i> <span id="sync-text">Desconectado</span></span>
-            <button class="btn-logout" onclick="handleLogout()"><i class="fas fa-sign-out-alt"></i> Salir</button>
+            <span id="sync-status" class="sync-status"><i class="fas fa-check-circle"></i> <span id="sync-text">Guardado Local</span></span>
         </div>
     </div>
 
@@ -310,9 +308,6 @@ Oficios varios</textarea></td>
         </div> <!-- End page-container -->
     </div> <!-- End layout-wrapper -->
 
-    <!-- Supabase JS SDK v2 -->
-    <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
-    
     <script src="app.js"></script>
 </body>
 
