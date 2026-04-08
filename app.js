@@ -77,6 +77,35 @@ function updateSyncStatus(statusMsg, isOk = true) {
 }
 
 // ============================================
+// IMAGE COMPRESSION (TO AVOID 1MB LIMIT)
+// ============================================
+function compressImage(file, maxWidth, callback) {
+    const reader = new FileReader();
+    reader.readAsDataURL(file);
+    reader.onload = event => {
+        const img = new Image();
+        img.src = event.target.result;
+        img.onload = () => {
+            let width = img.width;
+            let height = img.height;
+            if (width > maxWidth) {
+                height = Math.round(height *= maxWidth / width);
+                width = maxWidth;
+            }
+            const canvas = document.createElement('canvas');
+            canvas.width = width;
+            canvas.height = height;
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(img, 0, 0, width, height);
+            
+            // Comprime a JPEG con calidad 0.7 para que pese poquísimo (aprox 50KB-100KB)
+            const compressedBaseColor = canvas.toDataURL('image/jpeg', 0.7);
+            callback(compressedBaseColor);
+        };
+    };
+}
+
+// ============================================
 // APP LOGIC
 // ============================================
 
@@ -285,8 +314,8 @@ window.removeSignatureBox = function(btn) {
 window.handleSignatureUpload = function(event, inputElem) {
     const file = event.target.files[0];
     if (!file || !file.type.startsWith('image/')) return;
-    const reader = new FileReader();
-    reader.onload = function(e) {
+    
+    compressImage(file, 400, (compressedBase64) => {
         const box = inputElem.closest('.signature-box');
         let img = box.querySelector('.signature-img');
         if (!img) {
@@ -294,11 +323,10 @@ window.handleSignatureUpload = function(event, inputElem) {
             img.className = 'signature-img';
             box.querySelector('.signature-img-container').prepend(img);
         }
-        img.src = e.target.result;
-        box.querySelector('.sig-base64').value = e.target.result;
+        img.src = compressedBase64;
+        box.querySelector('.sig-base64').value = compressedBase64;
         _triggerSave();
-    };
-    reader.readAsDataURL(file);
+    });
 }
 
 // Photos
@@ -307,11 +335,36 @@ window.handleImageUpload = function(event) {
     if (!files || files.length === 0) return;
     Array.from(files).forEach(file => {
         if (!file.type.startsWith('image/')) return;
-        const reader = new FileReader();
-        reader.onload = function(e) { injectPhoto(e.target.result, ""); };
-        reader.readAsDataURL(file);
+        compressImage(file, 800, (compressedBase64) => {
+            injectPhoto(compressedBase64, "");
+        });
     });
 }
+
+// Clipboard Paste Support for Photos
+window.addEventListener('paste', function(e) {
+    // Solo permitimos pegar si no estamos editando un campo de texto simple
+    if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') {
+        const type = e.target.type;
+        if (type !== 'file') return; // Dejar que el texto se pegue normal
+    }
+
+    const items = (e.clipboardData || window.clipboardData).items;
+    if (!items) return;
+
+    for (let i = 0; i < items.length; i++) {
+        if (items[i].type.indexOf('image/') !== -1) {
+            const file = items[i].getAsFile();
+            if (file) {
+                // Prevenir pegado si lo hacen fuera de la zona para que no brinque la pantalla, aunque es un dashboard.
+                e.preventDefault(); 
+                compressImage(file, 800, (compressedBase64) => {
+                    injectPhoto(compressedBase64, "");
+                });
+            }
+        }
+    }
+});
 
 function injectPhoto(imgSrc, captionStr = '') {
     const grid = document.getElementById('photos-grid');
