@@ -70,16 +70,20 @@ function compressImage(file, maxWidth, callback) {
 function initApp() {
     setupWeatherTable();
     setupAutoGrow();
-    initCalendar();
+    try { initCalendar(); } catch(e) { console.error(e); }
     
-    const queryParams = new URLSearchParams(window.location.search);
-    const idParam = queryParams.get('id');
-    
-    const today = idParam ? idParam : new Date().toISOString().split('T')[0];
+    const todayStr = new Date().toISOString().split('T')[0];
+    const urlParams = new URLSearchParams(window.location.search);
+    const dateParam = urlParams.get('id');
     const dateInput = document.getElementById('report-date');
-    if (dateInput) dateInput.value = today;
-    
-    loadCloudReport(today);
+
+    if (dateParam) {
+        if (dateInput) dateInput.value = dateParam;
+        try { loadCloudReport(dateParam); } catch(e) { console.error(e); }
+    } else {
+        if (dateInput) dateInput.value = todayStr;
+        try { loadCloudReport(todayStr); } catch(e) { console.error(e); }
+    }
 
     if (dateInput) {
         dateInput.addEventListener('change', function (e) {
@@ -592,12 +596,13 @@ window.changeMonth = function(offset) {
 function initCalendar() {
     const grid = document.getElementById('calendar-grid');
     if (!grid) return;
-    if (!currentUser) return; // Only process if authed
 
-    // Re-fetch keys from firestore (all doc ids)
-    db.collection('reports').get().then(snapshot => {
-        const completedLogs = [];
-        snapshot.forEach(doc => completedLogs.push(doc.id));
+    supabase.from('reports').select('id').then(({data, error}) => {
+        if (error && error.code !== 'PGRST116') {
+            console.error("Calendar fetch error:", error.message);
+            return;
+        }
+        const completedLogs = data ? data.map(row => row.id) : [];
         
         grid.innerHTML = '';
         const now = new Date();
@@ -648,6 +653,29 @@ function initCalendar() {
             grid.appendChild(dayDiv);
         }
     }).catch(err => console.error(err));
+}
+
+// ---------------------------------------------
+// Share Link Functionality
+// ---------------------------------------------
+window.copyShareLink = function() {
+    const id = document.getElementById('report-date').value;
+    if(!id) {
+        alert("Por favor selecciona una fecha primero.");
+        return;
+    }
+    const currentUrl = window.location.href;
+    const baseUrl = currentUrl.substring(0, currentUrl.lastIndexOf('/'));
+    const link = `${baseUrl}/view.html?id=${id}`;
+    
+    navigator.clipboard.writeText(link).then(() => {
+        const btn = document.getElementById('btn-share');
+        const orig = btn.innerHTML;
+        btn.innerHTML = '<i class="fas fa-check"></i> Copiado!';
+        setTimeout(() => btn.innerHTML = orig, 3000);
+    }).catch(err => {
+        prompt("Copia este enlace:", link);
+    });
 }
 
 // Notifications Logic Removed for Cloud Version to avoid double popups
