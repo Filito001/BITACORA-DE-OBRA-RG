@@ -11,8 +11,27 @@
 </head>
 
 <body>
+    <!-- Login Overlay -->
+    <div id="login-overlay" class="login-overlay">
+        <div class="login-box">
+            <h2 style="color: var(--primary-color); margin-bottom: 20px;">Acceso Administrador</h2>
+            <p style="margin-bottom: 20px; color: #64748b; font-size: 0.9rem;">Inicia sesión para editar la bitácora de obra y gestionar los informes.</p>
+            <input type="email" id="login-email" class="editable-input full-width" placeholder="Correo electrónico" style="margin-bottom: 10px; border: 1px solid #cbd5e1" />
+            <input type="password" id="login-pass" class="editable-input full-width" placeholder="Contraseña" style="margin-bottom: 15px; border: 1px solid #cbd5e1" />
+            <button class="btn-print" onclick="handleLogin()" style="width: 100%">Entrar a la Bitácora</button>
+            <p id="login-error" style="color: red; margin-top: 15px; font-size: 0.8rem; display: none;"></p>
+        </div>
+    </div>
+
     <div class="actions noprint">
-        <button id="btn-print" onclick="exportAndPrint()"><i class="fas fa-print"></i> Exportar / Imprimir PDF</button>
+        <div style="display: flex; gap: 10px; align-items: center;">
+            <button id="btn-print" onclick="exportAndPrint()"><i class="fas fa-print"></i> Exportar / Imprimir PDF</button>
+            <button id="btn-share" class="btn-share" onclick="copyShareLink()"><i class="fas fa-link"></i> Copiar Link Espectador</button>
+        </div>
+        <div>
+            <span id="sync-status" class="sync-status"><i class="fas fa-cloud"></i> <span id="sync-text">Desconectado</span></span>
+            <button class="btn-logout" onclick="handleLogout()"><i class="fas fa-sign-out-alt"></i> Salir</button>
+        </div>
     </div>
 
     <div class="layout-wrapper">
@@ -291,6 +310,11 @@ Oficios varios</textarea></td>
         </div> <!-- End page-container -->
     </div> <!-- End layout-wrapper -->
 
+    <!-- Firebase App (the core Firebase SDK) is always required and must be listed first -->
+    <script src="https://www.gstatic.com/firebasejs/10.9.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.9.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.9.0/firebase-firestore-compat.js"></script>
+    
     <script src="app.js"></script>
 </body>
 
