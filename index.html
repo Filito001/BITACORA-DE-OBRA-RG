@@ -23,11 +23,11 @@
             <input type="password" id="login-pass" class="editable-input full-width" placeholder="Contraseña"
                 style="margin-bottom: 15px; border: 1px solid #cbd5e1; padding: 10px;" />
             
-            <button class="btn-print" id="btn-auth" onclick="handleAuth()" style="width: 100%; justify-content: center; margin-bottom: 15px; padding: 10px;">Entrar a la Bitácora</button>
+            <button class="btn-print" id="btn-auth" style="width: 100%; justify-content: center; margin-bottom: 15px; padding: 10px;">Entrar a la Bitácora</button>
             
             <div style="text-align: center; font-size: 0.85rem; color: #64748b;">
                 <span id="auth-toggle-text">¿No tienes cuenta?</span> 
-                <a href="#" onclick="toggleAuthMode(event)" style="color: var(--accent); text-decoration: none; font-weight: bold;" id="auth-toggle-link">Regístrate aquí</a>
+                <a href="#" id="auth-toggle-link" style="color: var(--accent); text-decoration: none; font-weight: bold;">Regístrate aquí</a>
             </div>
 
             <p id="login-error" style="color: red; margin-top: 15px; font-size: 0.8rem; display: none; text-align: center;"></p>
@@ -44,7 +44,7 @@
         <div style="display: flex; gap: 15px; align-items: center;">
             <span id="sync-status" class="sync-status"><i class="fas fa-check-circle"></i> <span id="sync-text">Guardado
                     Local</span></span>
-            <button class="btn-delete" style="opacity: 1;" onclick="handleLogout()"><i class="fas fa-sign-out-alt"></i> Cerrar sesión</button>
+            <button class="btn-delete" id="btn-logout" style="opacity: 1;"><i class="fas fa-sign-out-alt"></i> Cerrar sesión</button>
         </div>
     </div>
 
@@ -328,7 +328,7 @@ Oficios varios</textarea></td>
         </div> <!-- End page-container -->
     </div> <!-- End layout-wrapper -->
 
-    <script src="app.js?v=2"></script>
+    <script src="app_v2.js"></script>
 </body>
 
 </html>
