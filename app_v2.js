@@ -127,7 +127,7 @@ async function getAllKeys() {
 let autoSaveTimeout = null;
 let currentReportId = '';
 
-document.addEventListener('DOMContentLoaded', async () => {
+async function initAuthSetup() {
     // ATTACH EVENT LISTENERS SAFELY
     const btnAuth = document.getElementById('btn-auth');
     if (btnAuth) btnAuth.addEventListener('click', handleAuth);
@@ -165,7 +165,9 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (loginOverlay) loginOverlay.style.display = 'none';
         initApp();
     }
-});
+}
+
+initAuthSetup();
 
 // trigger autosave on any input change
 document.addEventListener('input', function (e) {
