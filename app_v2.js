@@ -30,7 +30,7 @@ async function checkUser() {
     return currentUser;
 }
 
-window.toggleAuthMode = function(e) {
+function toggleAuthMode(e) {
     if(e) e.preventDefault();
     isRegisterMode = !isRegisterMode;
     document.getElementById('auth-title').innerText = isRegisterMode ? 'Crear Cuenta' : 'Acceso Administrador';
@@ -41,7 +41,7 @@ window.toggleAuthMode = function(e) {
     document.getElementById('login-error').style.display = 'none';
 }
 
-window.handleAuth = async function() {
+async function handleAuth() {
     const email = document.getElementById('login-email').value;
     const password = document.getElementById('login-pass').value;
     const errorEl = document.getElementById('login-error');
@@ -82,7 +82,7 @@ window.handleAuth = async function() {
     }
 }
 
-window.handleLogout = async function() {
+async function handleLogout() {
     await supabase.auth.signOut();
     window.location.reload();
 }
@@ -128,6 +128,16 @@ let autoSaveTimeout = null;
 let currentReportId = '';
 
 document.addEventListener('DOMContentLoaded', async () => {
+    // ATTACH EVENT LISTENERS SAFELY
+    const btnAuth = document.getElementById('btn-auth');
+    if (btnAuth) btnAuth.addEventListener('click', handleAuth);
+
+    const toggleLink = document.getElementById('auth-toggle-link');
+    if (toggleLink) toggleLink.addEventListener('click', toggleAuthMode);
+
+    const btnLogout = document.getElementById('btn-logout');
+    if (btnLogout) btnLogout.addEventListener('click', handleLogout);
+
     const loginOverlay = document.getElementById('login-overlay');
     await checkUser();
 
