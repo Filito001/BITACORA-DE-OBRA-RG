@@ -1,71 +1,131 @@
 // ============================================
-// INDEXEDDB CONFIGURATION (LOCAL OFFLINE)
+// SUPABASE CONFIGURATION (CLOUD DATABASE)
 // ============================================
-const DB_NAME = 'BitacoraDB';
-const STORE_NAME = 'reportsStore';
-let dbInstance = null;
+const supabaseUrl = 'https://zdtqcgubmqxjcahpbukc.supabase.co';
+const supabaseKey = 'sb_publishable_OS_Y767gPrlN7IslzgIR4Q_0K04UShn';
+const supabase = window.supabase.createClient(supabaseUrl, supabaseKey);
 
-function initDB() {
-    return new Promise((resolve, reject) => {
-        const request = indexedDB.open(DB_NAME, 1);
-        request.onupgradeneeded = event => {
-            const db = event.target.result;
-            if (!db.objectStoreNames.contains(STORE_NAME)) {
-                db.createObjectStore(STORE_NAME, { keyPath: 'id' });
+let currentUser = null;
+let isRegisterMode = false;
+
+// Authenticate helper functions
+async function checkUser() {
+    const { data: { session } } = await supabase.auth.getSession();
+    currentUser = session?.user || null;
+    return currentUser;
+}
+
+window.toggleAuthMode = function(e) {
+    if(e) e.preventDefault();
+    isRegisterMode = !isRegisterMode;
+    document.getElementById('auth-title').innerText = isRegisterMode ? 'Crear Cuenta' : 'Acceso Administrador';
+    document.getElementById('auth-subtitle').innerText = isRegisterMode ? 'Regístrate para crear tus propias bitácoras.' : 'Inicia sesión para proteger y gestionar tus informes.';
+    document.getElementById('btn-auth').innerText = isRegisterMode ? 'Registrarse' : 'Entrar a la Bitácora';
+    document.getElementById('auth-toggle-text').innerText = isRegisterMode ? '¿Ya tienes cuenta?' : '¿No tienes cuenta?';
+    document.getElementById('auth-toggle-link').innerText = isRegisterMode ? 'Inicia sesión aquí' : 'Regístrate aquí';
+    document.getElementById('login-error').style.display = 'none';
+}
+
+window.handleAuth = async function() {
+    const email = document.getElementById('login-email').value;
+    const password = document.getElementById('login-pass').value;
+    const errorEl = document.getElementById('login-error');
+    errorEl.style.display = 'none';
+
+    if (!email || !password) {
+        errorEl.innerText = "Por favor ingresa correo y contraseña.";
+        errorEl.style.display = 'block';
+        return;
+    }
+
+    document.getElementById('btn-auth').innerText = 'Cargando...';
+    try {
+        if (isRegisterMode) {
+            const { data, error } = await supabase.auth.signUp({ email, password });
+            if (error) throw error;
+            if (data.user) {
+                if (!data.session) {
+                    errorEl.innerText = "Cuenta creada. Por favor confirma tu correo o intenta iniciar sesión.";
+                    errorEl.style.display = 'block';
+                }
             }
-        };
-        request.onsuccess = event => {
-            dbInstance = event.target.result;
-            resolve(dbInstance);
-        };
-        request.onerror = event => {
-            console.error('IndexedDB Error:', event.target.errorCode);
-            reject(event.target.error);
-        };
-    });
+        } else {
+            const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+            if (error) throw error;
+        }
+    } catch (err) {
+        errorEl.innerText = err.message;
+        errorEl.style.display = 'block';
+    } finally {
+        document.getElementById('btn-auth').innerText = isRegisterMode ? 'Registrarse' : 'Entrar a la Bitácora';
+    }
 }
 
-function putData(idParam, payloadObj) {
-    if (!dbInstance) return;
-    return new Promise((resolve, reject) => {
-        const tx = dbInstance.transaction(STORE_NAME, 'readwrite');
-        const store = tx.objectStore(STORE_NAME);
-        store.put({ id: idParam, payload: payloadObj });
-        tx.oncomplete = () => resolve();
-        tx.onerror = () => reject(tx.error);
-    });
+window.handleLogout = async function() {
+    await supabase.auth.signOut();
+    window.location.reload();
 }
 
-function getData(idParam) {
-    if (!dbInstance) return Promise.resolve(null);
-    return new Promise((resolve, reject) => {
-        const tx = dbInstance.transaction(STORE_NAME, 'readonly');
-        const store = tx.objectStore(STORE_NAME);
-        const req = store.get(idParam);
-        req.onsuccess = () => resolve(req.result ? req.result.payload : null);
-        req.onerror = () => reject(req.error);
-    });
+async function putData(dateStrParam, payloadObj) {
+    if (!currentUser) throw new Error("No user authenticated");
+    const { data, error } = await supabase
+        .from('reportes')
+        .upsert({ 
+            id: `${dateStrParam}_${currentUser.id}`, 
+            user_id: currentUser.id, 
+            payload: payloadObj,
+            report_date: dateStrParam
+        }, { onConflict: 'id' });
+    if (error) throw error;
+    return data;
 }
 
-function getAllKeys() {
-    if (!dbInstance) return Promise.resolve([]);
-    return new Promise((resolve, reject) => {
-        const tx = dbInstance.transaction(STORE_NAME, 'readonly');
-        const store = tx.objectStore(STORE_NAME);
-        const req = store.getAllKeys();
-        req.onsuccess = () => resolve(req.result);
-        req.onerror = () => reject(req.error);
-    });
+async function getData(dateStrParam) {
+    if (!currentUser) return null;
+    const { data, error } = await supabase
+        .from('reportes')
+        .select('payload')
+        .eq('id', `${dateStrParam}_${currentUser.id}`)
+        .maybeSingle();
+
+    if (error) throw error;
+    return data ? data.payload : null;
+}
+
+async function getAllKeys() {
+    if (!currentUser) return [];
+    const { data, error } = await supabase
+        .from('reportes')
+        .select('report_date')
+        .eq('user_id', currentUser.id);
+
+    if (error) throw error;
+    return data.map(row => row.report_date);
 }
 
 let autoSaveTimeout = null;
 let currentReportId = '';
 
-// Quitamos el overlay de login ya que usaremos RLS desactivado y URLs ocultas
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
     const loginOverlay = document.getElementById('login-overlay');
-    if (loginOverlay) loginOverlay.style.display = 'none';
-    initApp();
+    await checkUser();
+
+    supabase.auth.onAuthStateChange((event, session) => {
+        currentUser = session?.user || null;
+        if (event === 'SIGNED_IN') {
+            if (loginOverlay) loginOverlay.style.display = 'none';
+            initApp();
+        } else if (event === 'SIGNED_OUT') {
+            if (loginOverlay) loginOverlay.style.display = 'flex';
+        }
+    });
+
+    if (!currentUser) {
+        if (loginOverlay) loginOverlay.style.display = 'flex';
+    } else {
+        if (loginOverlay) loginOverlay.style.display = 'none';
+        initApp();
+    }
 });
 
 // trigger autosave on any input change
@@ -123,29 +183,28 @@ function compressImage(file, maxWidth, callback) {
 function initApp() {
     setupWeatherTable();
     setupAutoGrow();
-    initDB().then(() => {
-        try { initCalendar(); } catch (e) { console.error(e); }
+    
+    try { initCalendar(); } catch (e) { console.error(e); }
 
-        const todayStr = new Date().toISOString().split('T')[0];
-        const urlParams = new URLSearchParams(window.location.search);
-        const dateParam = urlParams.get('id');
-        const dateInput = document.getElementById('report-date');
+    const todayStr = new Date().toISOString().split('T')[0];
+    const urlParams = new URLSearchParams(window.location.search);
+    const dateParam = urlParams.get('id');
+    const dateInput = document.getElementById('report-date');
 
-        if (dateParam) {
-            if (dateInput) dateInput.value = dateParam;
-            try { loadCloudReport(dateParam); } catch (e) { console.error(e); }
-        } else {
-            if (dateInput) dateInput.value = todayStr;
-            try { loadCloudReport(todayStr); } catch (e) { console.error(e); }
-        }
+    if (dateParam) {
+        if (dateInput) dateInput.value = dateParam;
+        try { loadCloudReport(dateParam); } catch (e) { console.error(e); }
+    } else {
+        if (dateInput) dateInput.value = todayStr;
+        try { loadCloudReport(todayStr); } catch (e) { console.error(e); }
+    }
 
-        if (dateInput) {
-            dateInput.addEventListener('change', function (e) {
-                window.history.pushState({}, '', '?id=' + e.target.value);
-                loadCloudReport(e.target.value);
-            });
-        }
-    }).catch(e => console.error("Fallo general DB:", e));
+    if (dateInput) {
+        dateInput.addEventListener('change', function (e) {
+            window.history.pushState({}, '', '?id=' + e.target.value);
+            loadCloudReport(e.target.value);
+        });
+    }
 }
 
 // ============================================
