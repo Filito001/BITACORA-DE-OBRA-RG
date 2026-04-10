@@ -18,14 +18,29 @@
 }
 
 @keyframes gradientBG {
-    0% { background-position: 0% 50%; }
-    50% { background-position: 100% 50%; }
-    100% { background-position: 0% 50%; }
+    0% {
+        background-position: 0% 50%;
+    }
+
+    50% {
+        background-position: 100% 50%;
+    }
+
+    100% {
+        background-position: 0% 50%;
+    }
 }
 
 @keyframes fadeInUp {
-    from { opacity: 0; transform: translateY(20px); }
-    to { opacity: 1; transform: translateY(0); }
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
 }
 
 * {
@@ -76,7 +91,7 @@ body {
     outline: none;
     border-color: var(--accent);
     background-color: var(--white);
-    box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.2), 0 4px 6px rgba(0,0,0,0.05);
+    box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.2), 0 4px 6px rgba(0, 0, 0, 0.05);
     transform: translateY(-1px);
 }
 
@@ -115,7 +130,7 @@ textarea.auto-grow {
     font-family: inherit;
     padding: 10px 20px;
     border-radius: 8px;
-    border: 1px solid rgba(255,255,255,0.2);
+    border: 1px solid rgba(255, 255, 255, 0.2);
     font-weight: 600;
     cursor: pointer;
     font-size: 1rem;
@@ -175,13 +190,21 @@ textarea.auto-grow {
     gap: 5px;
 }
 
-.sync-status.ok { color: #10b981; }
-.sync-status.syncing { color: #f59e0b; }
+.sync-status.ok {
+    color: #10b981;
+}
+
+.sync-status.syncing {
+    color: #f59e0b;
+}
 
 .login-overlay {
     position: fixed;
-    top: 0; left: 0; right: 0; bottom: 0;
-    background: rgba(0,0,0,0.8);
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.8);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -193,7 +216,7 @@ textarea.auto-grow {
     background: white;
     padding: 30px;
     border-radius: 8px;
-    box-shadow: 0 10px 25px rgba(0,0,0,0.5);
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5);
     width: 100%;
     max-width: 400px;
 }
@@ -209,7 +232,8 @@ textarea.auto-grow {
     gap: 15px;
 }
 
-.header-left, .header-right {
+.header-left,
+.header-right {
     flex: 0 0 auto;
     display: flex;
     flex-direction: column;
@@ -510,9 +534,19 @@ textarea.auto-grow {
 }
 
 @keyframes popIn {
-    0% { transform: scale(0); opacity: 0; }
-    80% { transform: scale(1.2); }
-    100% { transform: scale(1); opacity: 1; }
+    0% {
+        transform: scale(0);
+        opacity: 0;
+    }
+
+    80% {
+        transform: scale(1.2);
+    }
+
+    100% {
+        transform: scale(1);
+        opacity: 1;
+    }
 }
 
 .precipitaciones-box {
@@ -645,7 +679,7 @@ textarea.auto-grow {
 
 .signature-img-container {
     width: 100%;
-    height: 80px; 
+    height: 80px;
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -830,6 +864,7 @@ textarea.auto-grow {
 .text-red {
     color: #991b1b;
 }
+
 /* Rain Chart */
 .rain-chart-container {
     width: 100%;
@@ -878,8 +913,9 @@ textarea.auto-grow {
         text-align: center;
         gap: 15px;
     }
-    
-    .header-left, .header-right {
+
+    .header-left,
+    .header-right {
         align-items: center;
     }
 
@@ -962,6 +998,13 @@ textarea.auto-grow {
         display: none !important;
     }
 
+    .rain-mins-print {
+        display: block !important;
+        margin-top: 2px;
+        color: #000;
+    }
+
+
     .editable-input {
         border: none;
         background: transparent !important;
@@ -990,26 +1033,27 @@ textarea.auto-grow {
         box-shadow: none !important;
         border: none;
     }
-    
+
     .w-cell.w-sec {
-        background: #fef08a !important; /* solid fallback */
+        background: #fef08a !important;
+        /* solid fallback */
         color: #b45309 !important;
         -webkit-print-color-adjust: exact;
         print-color-adjust: exact;
     }
-    
+
     .w-cell.w-lluvia {
         background: #3b82f6 !important;
         color: white !important;
         -webkit-print-color-adjust: exact;
         print-color-adjust: exact;
     }
-    
+
     .weather-slots td {
         padding: 0 !important;
         height: 35px;
     }
-    
+
     .w-cell i {
         font-size: 1rem;
     }
@@ -1017,9 +1061,10 @@ textarea.auto-grow {
     /* Forcing elements not to break across pages awkwardly */
     .section-block {
         page-break-inside: avoid;
-        margin-bottom: 10px !important; /* Compress margins to ensure it fits on one page */
+        margin-bottom: 10px !important;
+        /* Compress margins to ensure it fits on one page */
     }
-    
+
     .section-title {
         margin-bottom: 5px !important;
     }
@@ -1081,4 +1126,30 @@ textarea.auto-grow {
     .textarea-container textarea.description-area {
         min-height: 180px !important;
     }
+}
+
+.rain-mins-input {
+    width: 32px;
+    margin: 2px auto 0 auto;
+    text-align: center;
+    font-size: 0.65rem;
+    border: 1px solid rgba(255,255,255,0.4);
+    border-radius: 3px;
+    background: rgba(255,255,255,0.2);
+    color: white;
+    font-weight: bold;
+    display: block;
+}
+
+.rain-mins-input:focus {
+    background: white;
+    color: black;
+    border-color: #3b82f6;
+    outline: none;
+}
+
+.rain-mins-input::-webkit-inner-spin-button, 
+.rain-mins-input::-webkit-outer-spin-button { 
+  -webkit-appearance: none; 
+  margin: 0; 
 }
