@@ -3,15 +3,30 @@
 // ============================================
 const supabaseUrl = 'https://zdtqcgubmqxjcahpbukc.supabase.co';
 const supabaseKey = 'sb_publishable_OS_Y767gPrlN7IslzgIR4Q_0K04UShn';
-const supabase = window.supabase.createClient(supabaseUrl, supabaseKey);
+let supabase = null;
+
+try {
+    if (window.supabase) {
+        supabase = window.supabase.createClient(supabaseUrl, supabaseKey);
+    } else {
+        console.error("Supabase CDN not loaded.");
+    }
+} catch (e) {
+    console.error("Error al inicializar Supabase:", e);
+}
 
 let currentUser = null;
 let isRegisterMode = false;
 
 // Authenticate helper functions
 async function checkUser() {
-    const { data: { session } } = await supabase.auth.getSession();
-    currentUser = session?.user || null;
+    if (!supabase) return null;
+    try {
+        const { data: { session } } = await supabase.auth.getSession();
+        currentUser = session?.user || null;
+    } catch(e) {
+        console.error("No se pudo obtener la sesión", e);
+    }
     return currentUser;
 }
 
@@ -31,6 +46,12 @@ window.handleAuth = async function() {
     const password = document.getElementById('login-pass').value;
     const errorEl = document.getElementById('login-error');
     errorEl.style.display = 'none';
+
+    if (!supabase) {
+        errorEl.innerText = "Error: No hay conexión con la base de datos (Supabase no cargó temporalmente o requiere internet).";
+        errorEl.style.display = 'block';
+        return;
+    }
 
     if (!email || !password) {
         errorEl.innerText = "Por favor ingresa correo y contraseña.";
@@ -110,15 +131,23 @@ document.addEventListener('DOMContentLoaded', async () => {
     const loginOverlay = document.getElementById('login-overlay');
     await checkUser();
 
-    supabase.auth.onAuthStateChange((event, session) => {
-        currentUser = session?.user || null;
-        if (event === 'SIGNED_IN') {
-            if (loginOverlay) loginOverlay.style.display = 'none';
-            initApp();
-        } else if (event === 'SIGNED_OUT') {
-            if (loginOverlay) loginOverlay.style.display = 'flex';
+    if (supabase) {
+        supabase.auth.onAuthStateChange((event, session) => {
+            currentUser = session?.user || null;
+            if (event === 'SIGNED_IN') {
+                if (loginOverlay) loginOverlay.style.display = 'none';
+                initApp();
+            } else if (event === 'SIGNED_OUT') {
+                if (loginOverlay) loginOverlay.style.display = 'flex';
+            }
+        });
+    } else {
+        const errTag = document.getElementById('login-error');
+        if(errTag) {
+            errTag.innerText = "ATENCIÓN: No hay conexión a internet o el script de Supabase está bloqueado. Revisa tu red.";
+            errTag.style.display = 'block';
         }
-    });
+    }
 
     if (!currentUser) {
         if (loginOverlay) loginOverlay.style.display = 'flex';
