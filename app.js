@@ -1,173 +1,143 @@
 // ============================================
-// SUPABASE CONFIGURATION (CLOUD DATABASE)
+// INDEXEDDB CONFIGURATION (LOCAL OFFLINE)
 // ============================================
-const supabaseUrl = 'https://zdtqcgubmqxjcahpbukc.supabase.co';
-const supabaseKey = 'sb_publishable_OS_Y767gPrlN7IslzgIR4Q_0K04UShn';
-let supabase = null;
+const DB_NAME = 'BitacoraDB';
+const STORE_NAME = 'reportsStore';
+let dbInstance = null;
 
-try {
-    if (window.supabase) {
-        supabase = window.supabase.createClient(supabaseUrl, supabaseKey);
-    } else {
-        console.error("Supabase CDN not loaded.");
-    }
-} catch (e) {
-    console.error("Error al inicializar Supabase:", e);
-}
-
-let currentUser = null;
-let isRegisterMode = false;
-
-// Authenticate helper functions
-async function checkUser() {
-    if (!supabase) return null;
-    try {
-        const { data: { session } } = await supabase.auth.getSession();
-        currentUser = session?.user || null;
-    } catch(e) {
-        console.error("No se pudo obtener la sesión", e);
-    }
-    return currentUser;
-}
-
-function toggleAuthMode(e) {
-    if(e) e.preventDefault();
-    isRegisterMode = !isRegisterMode;
-    document.getElementById('auth-title').innerText = isRegisterMode ? 'Crear Cuenta' : 'Acceso Administrador';
-    document.getElementById('auth-subtitle').innerText = isRegisterMode ? 'Regístrate para crear tus propias bitácoras.' : 'Inicia sesión para proteger y gestionar tus informes.';
-    document.getElementById('btn-auth').innerText = isRegisterMode ? 'Registrarse' : 'Entrar a la Bitácora';
-    document.getElementById('auth-toggle-text').innerText = isRegisterMode ? '¿Ya tienes cuenta?' : '¿No tienes cuenta?';
-    document.getElementById('auth-toggle-link').innerText = isRegisterMode ? 'Inicia sesión aquí' : 'Regístrate aquí';
-    document.getElementById('login-error').style.display = 'none';
-}
-
-async function handleAuth() {
-    const email = document.getElementById('login-email').value;
-    const password = document.getElementById('login-pass').value;
-    const errorEl = document.getElementById('login-error');
-    errorEl.style.display = 'none';
-
-    if (!supabase) {
-        errorEl.innerText = "Error: No hay conexión con la base de datos (Supabase no cargó temporalmente o requiere internet).";
-        errorEl.style.display = 'block';
-        return;
-    }
-
-    if (!email || !password) {
-        errorEl.innerText = "Por favor ingresa correo y contraseña.";
-        errorEl.style.display = 'block';
-        return;
-    }
-
-    document.getElementById('btn-auth').innerText = 'Cargando...';
-    try {
-        if (isRegisterMode) {
-            const { data, error } = await supabase.auth.signUp({ email, password });
-            if (error) throw error;
-            if (data.user) {
-                if (!data.session) {
-                    errorEl.innerText = "Cuenta creada. Por favor confirma tu correo o intenta iniciar sesión.";
-                    errorEl.style.display = 'block';
-                }
+function initDB() {
+    return new Promise((resolve, reject) => {
+        const request = indexedDB.open(DB_NAME, 1);
+        request.onupgradeneeded = event => {
+            const db = event.target.result;
+            if (!db.objectStoreNames.contains(STORE_NAME)) {
+                db.createObjectStore(STORE_NAME, { keyPath: 'id' });
             }
-        } else {
-            const { data, error } = await supabase.auth.signInWithPassword({ email, password });
-            if (error) throw error;
+        };
+        request.onsuccess = event => {
+            dbInstance = event.target.result;
+            resolve(dbInstance);
+        };
+        request.onerror = event => {
+            console.error('IndexedDB Error:', event.target.errorCode);
+            reject(event.target.error);
+        };
+    });
+}
+
+function putData(idParam, payloadObj) {
+    return new Promise(async (resolve, reject) => {
+        // Guardado Local
+        if (dbInstance) {
+            try {
+                const tx = dbInstance.transaction(STORE_NAME, 'readwrite');
+                const store = tx.objectStore(STORE_NAME);
+                store.put({ id: idParam, payload: payloadObj });
+            } catch(e) { console.error("Error IndexedDB", e); }
         }
-    } catch (err) {
-        errorEl.innerText = err.message;
-        errorEl.style.display = 'block';
-    } finally {
-        document.getElementById('btn-auth').innerText = isRegisterMode ? 'Registrarse' : 'Entrar a la Bitácora';
-    }
+        
+        // Guardado en la Nube (Silencioso)
+        if (window.supabase) {
+            try {
+                const supabaseUrl = 'https://zdtqcgubmqxjcahpbukc.supabase.co';
+                const supabaseKey = 'sb_publishable_OS_Y767gPrlN7IslzgIR4Q_0K04UShn';
+                const client = window.supabase.createClient(supabaseUrl, supabaseKey);
+                
+                const reportData = {
+                    id: idParam,
+                    content: payloadObj,
+                    updated_at: new Date().toISOString()
+                };
+                
+                await client.from('reportes').upsert(reportData);
+            } catch (e) {
+                console.error("Error guardando en Supabase (Silencioso):", e);
+            }
+        }
+        
+        resolve();
+    });
 }
 
-async function handleLogout() {
-    await supabase.auth.signOut();
-    window.location.reload();
+function getData(idParam) {
+    return new Promise(async (resolve, reject) => {
+        // Intentar primero desde Supabase (la nube siempre es la versión más actual)
+        if (window.supabase) {
+            try {
+                const supabaseUrl = 'https://zdtqcgubmqxjcahpbukc.supabase.co';
+                const supabaseKey = 'sb_publishable_OS_Y767gPrlN7IslzgIR4Q_0K04UShn';
+                const client = window.supabase.createClient(supabaseUrl, supabaseKey);
+                
+                const { data, error } = await client.from('reportes').select('content').eq('id', idParam).maybeSingle();
+                if (data && data.content) {
+                    return resolve(data.content);
+                }
+            } catch (e) {
+                console.error("Error leyendo de Supabase, usando Local:", e);
+            }
+        }
+        
+        // Si falló la nube, leer local
+        if (!dbInstance) return resolve(null);
+        
+        try {
+            const tx = dbInstance.transaction(STORE_NAME, 'readonly');
+            const store = tx.objectStore(STORE_NAME);
+            const req = store.get(idParam);
+            req.onsuccess = () => resolve(req.result ? req.result.payload : null);
+            req.onerror = () => resolve(null);
+        } catch(e) {
+            resolve(null);
+        }
+    });
 }
 
-async function putData(dateStrParam, payloadObj) {
-    if (!currentUser) throw new Error("No user authenticated");
-    const { data, error } = await supabase
-        .from('reportes')
-        .upsert({ 
-            id: `${dateStrParam}_${currentUser.id}`, 
-            user_id: currentUser.id, 
-            payload: payloadObj,
-            report_date: dateStrParam
-        }, { onConflict: 'id' });
-    if (error) throw error;
-    return data;
-}
-
-async function getData(dateStrParam) {
-    if (!currentUser) return null;
-    const { data, error } = await supabase
-        .from('reportes')
-        .select('payload')
-        .eq('id', `${dateStrParam}_${currentUser.id}`)
-        .maybeSingle();
-
-    if (error) throw error;
-    return data ? data.payload : null;
-}
-
-async function getAllKeys() {
-    if (!currentUser) return [];
-    const { data, error } = await supabase
-        .from('reportes')
-        .select('report_date')
-        .eq('user_id', currentUser.id);
-
-    if (error) throw error;
-    return data.map(row => row.report_date);
+function getAllKeys() {
+    return new Promise(async (resolve, reject) => {
+        let keys = new Set();
+        
+        // Cargar claves de la nube
+        if (window.supabase) {
+            try {
+                const supabaseUrl = 'https://zdtqcgubmqxjcahpbukc.supabase.co';
+                const supabaseKey = 'sb_publishable_OS_Y767gPrlN7IslzgIR4Q_0K04UShn';
+                const client = window.supabase.createClient(supabaseUrl, supabaseKey);
+                
+                const { data, error } = await client.from('reportes').select('id');
+                if (data) {
+                    data.forEach(row => keys.add(row.id));
+                }
+            } catch (e) {}
+        }
+        
+        // Cargar claves locales
+        if (dbInstance) {
+            try {
+                const tx = dbInstance.transaction(STORE_NAME, 'readonly');
+                const store = tx.objectStore(STORE_NAME);
+                const req = store.getAllKeys();
+                req.onsuccess = () => {
+                    if (req.result) req.result.forEach(k => keys.add(k));
+                    resolve(Array.from(keys));
+                };
+                req.onerror = () => resolve(Array.from(keys));
+                return;
+            } catch (e) {}
+        }
+        
+        resolve(Array.from(keys));
+    });
 }
 
 let autoSaveTimeout = null;
 let currentReportId = '';
 
-async function initAuthSetup() {
-    // ATTACH EVENT LISTENERS SAFELY
-    const btnAuth = document.getElementById('btn-auth');
-    if (btnAuth) btnAuth.addEventListener('click', handleAuth);
-
-    const toggleLink = document.getElementById('auth-toggle-link');
-    if (toggleLink) toggleLink.addEventListener('click', toggleAuthMode);
-
-    const btnLogout = document.getElementById('btn-logout');
-    if (btnLogout) btnLogout.addEventListener('click', handleLogout);
-
+// Quitamos el overlay de login ya que usaremos RLS desactivado y URLs ocultas
+document.addEventListener('DOMContentLoaded', () => {
     const loginOverlay = document.getElementById('login-overlay');
-    await checkUser();
-
-    if (supabase) {
-        supabase.auth.onAuthStateChange((event, session) => {
-            currentUser = session?.user || null;
-            if (event === 'SIGNED_IN') {
-                if (loginOverlay) loginOverlay.style.display = 'none';
-                initApp();
-            } else if (event === 'SIGNED_OUT') {
-                if (loginOverlay) loginOverlay.style.display = 'flex';
-            }
-        });
-    } else {
-        const errTag = document.getElementById('login-error');
-        if(errTag) {
-            errTag.innerText = "ATENCIÓN: No hay conexión a internet o el script de Supabase está bloqueado. Revisa tu red.";
-            errTag.style.display = 'block';
-        }
-    }
-
-    if (!currentUser) {
-        if (loginOverlay) loginOverlay.style.display = 'flex';
-    } else {
-        if (loginOverlay) loginOverlay.style.display = 'none';
-        initApp();
-    }
-}
-
-initAuthSetup();
+    if (loginOverlay) loginOverlay.style.display = 'none';
+    initApp();
+});
 
 // trigger autosave on any input change
 document.addEventListener('input', function (e) {
@@ -224,28 +194,29 @@ function compressImage(file, maxWidth, callback) {
 function initApp() {
     setupWeatherTable();
     setupAutoGrow();
-    
-    try { initCalendar(); } catch (e) { console.error(e); }
+    initDB().then(() => {
+        try { initCalendar(); } catch (e) { console.error(e); }
 
-    const todayStr = new Date().toISOString().split('T')[0];
-    const urlParams = new URLSearchParams(window.location.search);
-    const dateParam = urlParams.get('id');
-    const dateInput = document.getElementById('report-date');
+        const todayStr = new Date().toISOString().split('T')[0];
+        const urlParams = new URLSearchParams(window.location.search);
+        const dateParam = urlParams.get('id');
+        const dateInput = document.getElementById('report-date');
 
-    if (dateParam) {
-        if (dateInput) dateInput.value = dateParam;
-        try { loadCloudReport(dateParam); } catch (e) { console.error(e); }
-    } else {
-        if (dateInput) dateInput.value = todayStr;
-        try { loadCloudReport(todayStr); } catch (e) { console.error(e); }
-    }
+        if (dateParam) {
+            if (dateInput) dateInput.value = dateParam;
+            try { loadCloudReport(dateParam); } catch (e) { console.error(e); }
+        } else {
+            if (dateInput) dateInput.value = todayStr;
+            try { loadCloudReport(todayStr); } catch (e) { console.error(e); }
+        }
 
-    if (dateInput) {
-        dateInput.addEventListener('change', function (e) {
-            window.history.pushState({}, '', '?id=' + e.target.value);
-            loadCloudReport(e.target.value);
-        });
-    }
+        if (dateInput) {
+            dateInput.addEventListener('change', function (e) {
+                window.history.pushState({}, '', '?id=' + e.target.value);
+                loadCloudReport(e.target.value);
+            });
+        }
+    }).catch(e => console.error("Fallo general DB:", e));
 }
 
 // ============================================
