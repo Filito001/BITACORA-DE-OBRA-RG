@@ -26,7 +26,7 @@ function initDB() {
 }
 
 function putData(idParam, payloadObj) {
-    if(!dbInstance) return;
+    if (!dbInstance) return;
     return new Promise((resolve, reject) => {
         const tx = dbInstance.transaction(STORE_NAME, 'readwrite');
         const store = tx.objectStore(STORE_NAME);
@@ -37,7 +37,7 @@ function putData(idParam, payloadObj) {
 }
 
 function getData(idParam) {
-    if(!dbInstance) return Promise.resolve(null);
+    if (!dbInstance) return Promise.resolve(null);
     return new Promise((resolve, reject) => {
         const tx = dbInstance.transaction(STORE_NAME, 'readonly');
         const store = tx.objectStore(STORE_NAME);
@@ -48,7 +48,7 @@ function getData(idParam) {
 }
 
 function getAllKeys() {
-    if(!dbInstance) return Promise.resolve([]);
+    if (!dbInstance) return Promise.resolve([]);
     return new Promise((resolve, reject) => {
         const tx = dbInstance.transaction(STORE_NAME, 'readonly');
         const store = tx.objectStore(STORE_NAME);
@@ -69,7 +69,7 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 // trigger autosave on any input change
-document.addEventListener('input', function(e) {
+document.addEventListener('input', function (e) {
     if (!currentReportId) return;
     if (e.target.matches('input, textarea')) {
         updateSyncStatus('Guardando...', false);
@@ -81,8 +81,8 @@ document.addEventListener('input', function(e) {
 function updateSyncStatus(statusMsg, isOk = true) {
     const stTag = document.getElementById('sync-status');
     const txtTag = document.getElementById('sync-text');
-    if(!stTag || !txtTag) return;
-    
+    if (!stTag || !txtTag) return;
+
     txtTag.textContent = statusMsg;
     stTag.className = 'sync-status ' + (isOk ? 'ok' : 'syncing');
 }
@@ -108,7 +108,7 @@ function compressImage(file, maxWidth, callback) {
             canvas.height = height;
             const ctx = canvas.getContext('2d');
             ctx.drawImage(img, 0, 0, width, height);
-            
+
             // Comprime a JPEG con calidad 0.7 para que pese poquísimo (aprox 50KB-100KB)
             const compressedBaseColor = canvas.toDataURL('image/jpeg', 0.7);
             callback(compressedBaseColor);
@@ -124,8 +124,8 @@ function initApp() {
     setupWeatherTable();
     setupAutoGrow();
     initDB().then(() => {
-        try { initCalendar(); } catch(e) { console.error(e); }
-        
+        try { initCalendar(); } catch (e) { console.error(e); }
+
         const todayStr = new Date().toISOString().split('T')[0];
         const urlParams = new URLSearchParams(window.location.search);
         const dateParam = urlParams.get('id');
@@ -133,10 +133,10 @@ function initApp() {
 
         if (dateParam) {
             if (dateInput) dateInput.value = dateParam;
-            try { loadCloudReport(dateParam); } catch(e) { console.error(e); }
+            try { loadCloudReport(dateParam); } catch (e) { console.error(e); }
         } else {
             if (dateInput) dateInput.value = todayStr;
-            try { loadCloudReport(todayStr); } catch(e) { console.error(e); }
+            try { loadCloudReport(todayStr); } catch (e) { console.error(e); }
         }
 
         if (dateInput) {
@@ -154,7 +154,7 @@ function initApp() {
 async function saveToCloud() {
     currentReportId = document.getElementById('report-date').value;
     if (!currentReportId) return;
-    
+
     let reportData;
     try {
         reportData = serializeForm(currentReportId);
@@ -163,10 +163,11 @@ async function saveToCloud() {
         updateSyncStatus('Error', false);
         return;
     }
-    
+
     try {
         await putData(currentReportId, reportData);
         updateSyncStatus('Guardado Local', true);
+        renderRainChart(currentReportId);
     } catch (err) {
         console.error("Local Error:", err);
         updateSyncStatus('Fallo de Guardado', false);
@@ -176,7 +177,7 @@ async function saveToCloud() {
 async function loadCloudReport(dateStr) {
     currentReportId = dateStr;
     updateSyncStatus('Cargando...', false);
-    
+
     try {
         const payload = await getData(dateStr);
         if (payload) {
@@ -186,6 +187,7 @@ async function loadCloudReport(dateStr) {
             saveToCloud();
         }
         updateSyncStatus('Cargado Local', true);
+        renderRainChart(currentReportId);
     } catch (err) {
         console.error("Local Read Error:", err);
         updateSyncStatus('Fallo de Lectura', false);
@@ -199,7 +201,7 @@ function _triggerSave() {
 }
 
 // Auto-grow textareas
-window.autoGrow = function(element) {
+window.autoGrow = function (element) {
     element.style.height = 'auto';
     element.style.height = (element.scrollHeight) + 'px';
 }
@@ -222,7 +224,7 @@ function setupWeatherTable() {
         const td = document.createElement('td');
         td.dataset.state = 0;
         td.innerHTML = `<div class="w-cell"></div>`;
-        td.addEventListener('click', function() {
+        td.addEventListener('click', function () {
             let currentState = parseInt(this.dataset.state);
             currentState = (currentState + 1) % 3;
             this.dataset.state = currentState;
@@ -244,12 +246,12 @@ function setupWeatherTable() {
 }
 
 // Table Rows Manipulations
-window.removeRow = function(btn) {
+window.removeRow = function (btn) {
     btn.closest('tr').remove();
     _triggerSave();
 }
 
-window.addPersonRow = function() {
+window.addPersonRow = function () {
     const tbody = document.getElementById('personnel-body');
     const tr = document.createElement('tr');
     tr.innerHTML = `
@@ -262,7 +264,7 @@ window.addPersonRow = function() {
     _triggerSave();
 }
 
-window.addMaterialRow = function() {
+window.addMaterialRow = function () {
     const tbody = document.getElementById('materials-body');
     const tr = document.createElement('tr');
     tr.innerHTML = `
@@ -306,7 +308,7 @@ function addMaterialRowWithData(dataArr) {
 }
 
 // Signatures
-window.addSignatureBox = function(dataArr = ["", "", "", ""]) {
+window.addSignatureBox = function (dataArr = ["", "", "", ""]) {
     const container = document.getElementById('signatures-container');
     if (!container) return;
     const box = document.createElement('div');
@@ -330,15 +332,15 @@ window.addSignatureBox = function(dataArr = ["", "", "", ""]) {
     container.appendChild(box);
 }
 
-window.removeSignatureBox = function(btn) {
+window.removeSignatureBox = function (btn) {
     btn.closest('.signature-box').remove();
     _triggerSave();
 }
 
-window.handleSignatureUpload = function(event, inputElem) {
+window.handleSignatureUpload = function (event, inputElem) {
     const file = event.target.files[0];
     if (!file || !file.type.startsWith('image/')) return;
-    
+
     compressImage(file, 400, (compressedBase64) => {
         const box = inputElem.closest('.signature-box');
         let img = box.querySelector('.signature-img');
@@ -354,7 +356,7 @@ window.handleSignatureUpload = function(event, inputElem) {
 }
 
 // Photos
-window.handleImageUpload = function(event) {
+window.handleImageUpload = function (event) {
     const files = event.target.files;
     if (!files || files.length === 0) return;
     Array.from(files).forEach(file => {
@@ -366,7 +368,7 @@ window.handleImageUpload = function(event) {
 }
 
 // Clipboard Paste Support for Photos
-window.addEventListener('paste', function(e) {
+window.addEventListener('paste', function (e) {
     // Solo permitimos pegar si no estamos editando un campo de texto simple
     if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') {
         const type = e.target.type;
@@ -381,7 +383,7 @@ window.addEventListener('paste', function(e) {
             const file = items[i].getAsFile();
             if (file) {
                 // Prevenir pegado si lo hacen fuera de la zona para que no brinque la pantalla, aunque es un dashboard.
-                e.preventDefault(); 
+                e.preventDefault();
                 compressImage(file, 800, (compressedBase64) => {
                     injectPhoto(compressedBase64, "");
                 });
@@ -409,7 +411,7 @@ function injectPhoto(imgSrc, captionStr = '') {
     _triggerSave();
 }
 
-window.removePhoto = function(btn) {
+window.removePhoto = function (btn) {
     const photoItem = btn.closest('.photo-item');
     if (photoItem) {
         photoItem.remove();
@@ -425,7 +427,7 @@ window.removePhoto = function(btn) {
 // ---------------------------------------------
 // The core export and print feature
 // ---------------------------------------------
-window.exportAndPrint = function() {
+window.exportAndPrint = function () {
     const dateInput = document.getElementById('report-date').value;
     if (!dateInput) {
         alert("Por favor escoge una fecha de reporte antes de guardar.");
@@ -503,7 +505,7 @@ function deserializeForm(data) {
 
     document.getElementById('report-date').value = data.date;
     document.getElementById('obra-name').value = data.obra || '';
-    
+
     document.querySelectorAll('.header-meta input')[0].value = data.codigo || '';
     document.querySelectorAll('.header-meta input')[1].value = data.version || '';
     document.querySelectorAll('.general-info input')[1].value = data.tiempo || '';
@@ -523,12 +525,12 @@ function deserializeForm(data) {
                 }
                 cell.className = 'w-cell';
                 cell.innerHTML = '';
-                
-                if(state == 1) {
+
+                if (state == 1) {
                     cell.classList.add('w-sec');
                     cell.innerHTML = '<i class="fas fa-sun"></i>';
                 }
-                if(state == 2) {
+                if (state == 2) {
                     cell.classList.add('w-lluvia');
                     cell.innerHTML = '<i class="fas fa-cloud-rain"></i>';
                 }
@@ -538,7 +540,7 @@ function deserializeForm(data) {
 
     document.querySelectorAll('.precipitaciones-box input')[0].value = data.precipitaciones || '';
     document.querySelectorAll('.precipitaciones-box textarea')[0].value = data.notaClima || '';
-    
+
     const textareas = document.querySelectorAll('.textarea-container textarea');
     textareas[0].value = data.actividadesCampo || '';
     textareas[1].value = data.recomendaciones || '';
@@ -565,7 +567,7 @@ function deserializeForm(data) {
         if (typeof data.signatures[0] === 'string') {
             // Backward compatibility
             for (let i = 0; i < data.signatures.length; i += 3) {
-                window.addSignatureBox([data.signatures[i] || '', data.signatures[i+1] || '', data.signatures[i+2] || '', '']);
+                window.addSignatureBox([data.signatures[i] || '', data.signatures[i + 1] || '', data.signatures[i + 2] || '', '']);
             }
         } else {
             // New Array of Objects format
@@ -602,7 +604,7 @@ function clearFormAndSetDate(dateStr) {
             ['PORTICO S.A.S', '1 Profesional\n(Residente de obra)', 'Ejecución de obra'],
             ['PORTICO S.A.S', '1 Ayudante de obra', 'Oficios varios'],
             ['G&G Ingenieros Asociados', '1 Topógrafo\n1 Operario retroexcavadora\n1 SST\n1 Oficial', 'Tareas asignadas']
-        ], 
+        ],
         materials: [['', '', '', '', '']], photos: []
     };
     deserializeForm(blank);
@@ -614,7 +616,7 @@ function clearFormAndSetDate(dateStr) {
 let currentDisplayedMonth = new Date().getMonth();
 let currentDisplayedYear = new Date().getFullYear();
 
-window.changeMonth = function(offset) {
+window.changeMonth = function (offset) {
     currentDisplayedMonth += offset;
     if (currentDisplayedMonth < 0) {
         currentDisplayedMonth = 11;
@@ -632,17 +634,17 @@ function initCalendar() {
     // Re-fetch keys from Local DB
     getAllKeys().then((keys) => {
         const completedLogs = keys || [];
-        
+
         grid.innerHTML = '';
         const now = new Date();
         const todayStr = new Date(now.getTime() - now.getTimezoneOffset() * 60000).toISOString().split('T')[0];
-        
-        document.getElementById('calendar-header').innerText = 
+
+        document.getElementById('calendar-header').innerText =
             ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"][currentDisplayedMonth] + " " + currentDisplayedYear;
 
         const firstDay = new Date(currentDisplayedYear, currentDisplayedMonth, 1);
         const lastDay = new Date(currentDisplayedYear, currentDisplayedMonth + 1, 0);
-        let startDayOfWeek = firstDay.getDay() === 0 ? 6 : firstDay.getDay() - 1; 
+        let startDayOfWeek = firstDay.getDay() === 0 ? 6 : firstDay.getDay() - 1;
 
         for (let i = 0; i < startDayOfWeek; i++) {
             const blank = document.createElement('div');
@@ -655,7 +657,7 @@ function initCalendar() {
             dayDiv.className = 'cal-day current-month';
             dayDiv.innerText = i;
             dayDiv.style.cursor = 'pointer';
-            
+
             const loopDateStr = `${currentDisplayedYear}-${String(currentDisplayedMonth + 1).padStart(2, '0')}-${String(i).padStart(2, '0')}`;
 
             if (loopDateStr <= todayStr) {
@@ -671,11 +673,11 @@ function initCalendar() {
             dayDiv.onclick = () => {
                 grid.querySelectorAll('.cal-day').forEach(d => d.style.boxShadow = 'none');
                 dayDiv.style.boxShadow = 'inset 0 0 0 2px var(--accent)';
-                
+
                 document.getElementById('report-date').value = loopDateStr;
                 window.history.pushState({}, '', '?id=' + loopDateStr);
                 loadCloudReport(loopDateStr);
-                
+
                 window.scrollTo({ top: 0, behavior: 'smooth' });
             };
 
@@ -684,5 +686,135 @@ function initCalendar() {
     }).catch(err => console.error(err));
 }
 
-// (Removed link copy functionality as requested)
+// =========================================================
+// PDF EXPORT / PRINT OTPIMIZATIONS (Hide Empty Elements)
+// =========================================================
+window.addEventListener('beforeprint', function () {
+    // 1. Hide empty rows in personnel
+    document.querySelectorAll('#personnel-body tr').forEach(tr => {
+        const textareas = tr.querySelectorAll('textarea');
+        let isEmpty = true;
+        textareas.forEach(ta => {
+            if (ta.value.trim() !== '') isEmpty = false;
+        });
+        if (isEmpty) tr.dataset.printHidden = 'true';
+    });
 
+    // 2. Hide empty rows in materials
+    document.querySelectorAll('#materials-body tr').forEach(tr => {
+        const inputs = tr.querySelectorAll('input, textarea');
+        let isEmpty = true;
+        inputs.forEach(input => {
+            if (input.value.trim() !== '') isEmpty = false;
+        });
+        if (isEmpty) tr.dataset.printHidden = 'true';
+    });
+
+    // 3. Hide completely empty sections (like photos or completely empty tables)
+    document.querySelectorAll('.section-block').forEach(section => {
+
+        // If it's the photo section
+        const grid = section.querySelector('#photos-grid');
+        if (grid) {
+            const photos = grid.querySelectorAll('.photo-item');
+            if (photos.length === 0) {
+                section.dataset.printHidden = 'true';
+            }
+        }
+
+        // If it's a tables section and all rows within are hidden
+        const tbody = section.querySelector('tbody#personnel-body, tbody#materials-body');
+        if (tbody) {
+            const allRows = tbody.querySelectorAll('tr');
+            const hiddenRows = tbody.querySelectorAll('tr[data-print-hidden="true"]');
+            if (allRows.length > 0 && allRows.length === hiddenRows.length) {
+                section.dataset.printHidden = 'true';
+            }
+        }
+    });
+
+    // Apply display none
+    document.querySelectorAll('[data-print-hidden="true"]').forEach(el => {
+        el.style.display = 'none';
+    });
+});
+
+window.addEventListener('afterprint', function () {
+    // Restore display
+    document.querySelectorAll('[data-print-hidden="true"]').forEach(el => {
+        el.style.display = '';
+        delete el.dataset.printHidden;
+    });
+});
+
+let rainChartInstance = null;
+async function renderRainChart(currentDateString) {
+    if (!currentDateString) return;
+    const ctx = document.getElementById('rainChart');
+    if (!ctx) return;
+
+    const currentMonthPrefix = currentDateString.substring(0, 7);
+    const allKeys = await getAllKeys();
+    const monthKeys = allKeys.filter(k => k.startsWith(currentMonthPrefix) && k <= currentDateString).sort();
+
+    const currentDay = parseInt(currentDateString.substring(8, 10), 10);
+    const dailyRainMap = {};
+
+    for (const key of monthKeys) {
+        const payload = await getData(key);
+        if (payload && payload.weatherSlots) {
+            const rainHours = payload.weatherSlots.filter(s => s == 2 || s === '2').length;
+            const dayNum = parseInt(key.substring(8, 10), 10);
+            dailyRainMap[dayNum] = rainHours;
+        }
+    }
+
+    let totalRain = 0;
+    const labels = [];
+    const dataPoints = [];
+
+    for (let i = 1; i <= currentDay; i++) {
+        labels.push(i.toString());
+        const hours = dailyRainMap[i] || 0;
+        dataPoints.push(hours);
+        totalRain += hours;
+    }
+
+    const lbl = document.getElementById('rain-total-label');
+    if (lbl) lbl.textContent = `Total Acumulado del Mes: ${totalRain} horas`;
+
+    if (rainChartInstance) {
+        rainChartInstance.destroy();
+    }
+
+    rainChartInstance = new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: labels,
+            datasets: [{
+                label: 'Horas de lluvia',
+                data: dataPoints,
+                backgroundColor: 'rgba(59, 130, 246, 0.6)',
+                borderColor: 'rgba(59, 130, 246, 1)',
+                borderWidth: 1
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    ticks: {
+                        stepSize: 1
+                    }
+                }
+            },
+            plugins: {
+                legend: {
+                    display: false
+                }
+            }
+        }
+    });
+}
