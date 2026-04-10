@@ -222,12 +222,16 @@ function setupWeatherTable() {
 
     for (let i = 0; i < 12; i++) {
         const td = document.createElement('td');
-        td.dataset.state = 0;
+        td.dataset.state = "0";
+        td.dataset.minutes = "0";
         td.innerHTML = `<div class="w-cell"></div>`;
-        td.addEventListener('click', function () {
-            let currentState = parseInt(this.dataset.state);
+        td.addEventListener('click', function (e) {
+            if (e.target.tagName.toLowerCase() === 'input') return;
+            let currentState = parseInt(this.dataset.state || "0");
             currentState = (currentState + 1) % 3;
-            this.dataset.state = currentState;
+            this.dataset.state = currentState.toString();
+            this.dataset.minutes = currentState === 2 ? "60" : "0";
+            
             const cell = this.querySelector('.w-cell');
             cell.className = 'w-cell';
             if (currentState === 1) {
@@ -235,7 +239,7 @@ function setupWeatherTable() {
                 cell.innerHTML = '<i class="fas fa-sun"></i>';
             } else if (currentState === 2) {
                 cell.classList.add('w-lluvia');
-                cell.innerHTML = '<i class="fas fa-cloud-rain"></i>';
+                cell.innerHTML = '<i class="fas fa-cloud-rain"></i><input type="number" class="rain-mins-input noprint" value="60" min="1" max="60" onchange="this.parentElement.parentElement.dataset.minutes = this.value; this.nextElementSibling.innerText = this.value + \'m\'; _triggerSave()"><span class="rain-mins-print" style="display:none; font-size: 0.65rem; font-weight: bold; line-height:1;">60m</span>';
             } else {
                 cell.innerHTML = '';
             }
@@ -448,7 +452,10 @@ function serializeForm(dateStr) {
         version: document.querySelectorAll('.header-meta input')[1].value,
         tiempo: document.querySelectorAll('.general-info input')[1].value,
         temperatura: document.querySelectorAll('.temp-input-wrapper input')[0].value,
-        weatherSlots: Array.from(document.getElementById('weather-slots').children).map(td => td.dataset.state),
+        weatherSlots: Array.from(document.getElementById('weather-slots').children).map(td => ({
+            state: td.dataset.state || "0",
+            minutes: td.dataset.minutes || "0"
+        })),
         precipitaciones: document.querySelectorAll('.precipitaciones-box input')[0].value,
         notaClima: document.querySelectorAll('.precipitaciones-box textarea')[0].value,
         actividadesCampo: document.querySelectorAll('.textarea-container textarea')[0].value,
@@ -514,10 +521,20 @@ function deserializeForm(data) {
     // Weather
     const slots = document.getElementById('weather-slots').children;
     if (data.weatherSlots) {
-        data.weatherSlots.forEach((state, i) => {
+        data.weatherSlots.forEach((slotData, i) => {
             if (slots[i]) {
                 const td = slots[i];
+                let state = "0", mins = "0";
+                if (typeof slotData === 'object' && slotData !== null) {
+                    state = slotData.state || "0";
+                    mins = slotData.minutes || "0";
+                } else {
+                    state = slotData;
+                    mins = (state == 2 || state === '2') ? "60" : "0";
+                }
                 td.dataset.state = state;
+                td.dataset.minutes = mins;
+                
                 let cell = td.querySelector('.w-cell');
                 if (!cell) {
                     td.innerHTML = `<div class="w-cell"></div>`;
@@ -529,10 +546,9 @@ function deserializeForm(data) {
                 if (state == 1) {
                     cell.classList.add('w-sec');
                     cell.innerHTML = '<i class="fas fa-sun"></i>';
-                }
-                if (state == 2) {
+                } else if (state == 2) {
                     cell.classList.add('w-lluvia');
-                    cell.innerHTML = '<i class="fas fa-cloud-rain"></i>';
+                    cell.innerHTML = `<i class="fas fa-cloud-rain"></i><input type="number" class="rain-mins-input noprint" value="${mins}" min="1" max="60" onchange="this.parentElement.parentElement.dataset.minutes = this.value; this.nextElementSibling.innerText = this.value + 'm'; _triggerSave()"><span class="rain-mins-print" style="display:none; font-size: 0.65rem; font-weight: bold; line-height:1;">${mins}m</span>`;
                 }
             }
         });
@@ -594,7 +610,7 @@ function clearFormAndSetDate(dateStr) {
     // Defines a blank state
     const blank = {
         date: dateStr, obra: 'Reserva de Guance', codigo: '', version: '01', tiempo: '', temperatura: '',
-        weatherSlots: Array(12).fill(0), precipitaciones: '', notaClima: '', actividadesCampo: '', recomendaciones: '',
+        weatherSlots: Array.from({length: 12}, () => ({state: "0", minutes: "0"})), precipitaciones: '', notaClima: '', actividadesCampo: '', recomendaciones: '',
         signatures: [
             { nombre: 'Arq. Filemón Arias', cargo: 'Residente de Interventoría', empresa: 'SERRA I&A S.A.S', img: '' },
             { nombre: 'Arq. Wilmer', cargo: 'Residente de Obra', empresa: 'PORTICO', img: '' }
@@ -763,7 +779,18 @@ async function renderRainChart(currentDateString) {
     for (const key of monthKeys) {
         const payload = await getData(key);
         if (payload && payload.weatherSlots) {
-            const rainHours = payload.weatherSlots.filter(s => s == 2 || s === '2').length;
+            let rainHours = 0;
+            payload.weatherSlots.forEach(s => {
+                if (typeof s === 'object' && s !== null) {
+                    if (s.state == 2) {
+                        rainHours += (parseFloat(s.minutes) || 0) / 60;
+                    }
+                } else {
+                    if (s == 2 || s === '2') {
+                        rainHours += 1;
+                    }
+                }
+            });
             const dayNum = parseInt(key.substring(8, 10), 10);
             dailyRainMap[dayNum] = rainHours;
         }
@@ -781,7 +808,7 @@ async function renderRainChart(currentDateString) {
     }
 
     const lbl = document.getElementById('rain-total-label');
-    if (lbl) lbl.textContent = `Total Acumulado del Mes: ${totalRain} horas`;
+    if (lbl) lbl.textContent = `Total Acumulado del Mes: ${Number.isInteger(totalRain) ? totalRain : totalRain.toFixed(1)} horas`;
 
     if (rainChartInstance) {
         rainChartInstance.destroy();
