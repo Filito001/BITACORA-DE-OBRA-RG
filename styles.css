@@ -1,20 +1,31 @@
 :root {
-    --primary-color: #2c3e50;
-    --border-color: #cbd5e1;
+    --primary-color: #0f172a;
+    --border-color: rgba(203, 213, 225, 0.5);
     --bg-color: #f8fafc;
     --white: #ffffff;
-    --text-main: #334155;
+    --glass-bg: rgba(255, 255, 255, 0.6);
+    --text-main: #1e293b;
     --text-muted: #64748b;
-    --accent: #2563eb;
-    --accent-hover: #1d4ed8;
+    --accent: #3b82f6;
+    --accent-hover: #2563eb;
     --danger: #ef4444;
 
     /* Weather colors */
     --w-sec: #fef08a;
-    /* Yellow */
     --w-lluvia-suave: #93c5fd;
     --w-lluvia-fuerte: #3b82f6;
-    --w-none: #ffffff;
+    --w-none: transparent;
+}
+
+@keyframes gradientBG {
+    0% { background-position: 0% 50%; }
+    50% { background-position: 100% 50%; }
+    100% { background-position: 0% 50%; }
+}
+
+@keyframes fadeInUp {
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
 }
 
 * {
@@ -26,8 +37,9 @@
 body {
     font-family: 'Inter', sans-serif;
     color: var(--text-main);
-    background-color: #e2e8f0;
-    /* Darker outside the page container */
+    background: linear-gradient(-45deg, #e2e8f0, #cbd5e1, #e0e7ff, #f1f5f9);
+    background-size: 400% 400%;
+    animation: gradientBG 15s ease infinite;
     line-height: 1.5;
     padding: 2rem 1rem;
 }
@@ -38,10 +50,10 @@ body {
     max-width: 900px;
     margin: 0 auto;
     padding: 40px;
-    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
-    border-radius: 8px;
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.15);
+    border-radius: 16px;
     min-height: 1122px;
-    /* A4 approx */
+    animation: fadeInUp 0.8s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 /* Common Inputs */
@@ -64,7 +76,8 @@ body {
     outline: none;
     border-color: var(--accent);
     background-color: var(--white);
-    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+    box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.2), 0 4px 6px rgba(0,0,0,0.05);
+    transform: translateY(-1px);
 }
 
 .bold-text {
@@ -101,17 +114,22 @@ textarea.auto-grow {
 .actions button {
     font-family: inherit;
     padding: 10px 20px;
-    border-radius: 6px;
-    border: none;
+    border-radius: 8px;
+    border: 1px solid rgba(255,255,255,0.2);
     font-weight: 600;
     cursor: pointer;
     font-size: 1rem;
-    transition: all 0.2s;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
 }
 
+.actions button:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 15px rgba(0, 0, 0, 0.15);
+}
+
 .btn-print {
-    background-color: var(--primary-color);
+    background: linear-gradient(135deg, var(--primary-color), #475569);
     color: var(--white);
     display: flex;
     align-items: center;
@@ -119,12 +137,11 @@ textarea.auto-grow {
 }
 
 .btn-print:hover {
-    background-color: var(--text-main);
-    box-shadow: 0 6px 12px rgba(0, 0, 0, 0.15);
+    background: linear-gradient(135deg, #1e293b, var(--primary-color));
 }
 
 .btn-share {
-    background-color: #f59e0b; /* Ambar */
+    background: linear-gradient(135deg, #f59e0b, #d97706);
     color: white;
     display: flex;
     align-items: center;
@@ -132,7 +149,7 @@ textarea.auto-grow {
 }
 
 .btn-share:hover {
-    background-color: #d97706;
+    background: linear-gradient(135deg, #fbbf24, #f59e0b);
 }
 
 .btn-logout {
@@ -680,14 +697,18 @@ textarea.auto-grow {
 }
 
 .calendar-sidebar {
-    background: var(--white);
-    border-radius: 8px;
+    background: var(--glass-bg);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid rgba(255, 255, 255, 0.6);
+    border-radius: 12px;
     padding: 20px;
-    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+    box-shadow: 0 20px 40px -10px rgba(0, 0, 0, 0.15);
     width: 280px;
     height: fit-content;
     position: sticky;
     top: 20px;
+    animation: fadeInUp 0.8s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .calendar-title {
@@ -760,10 +781,18 @@ textarea.auto-grow {
 }
 
 .cal-day.current-month {
-    background-color: var(--white);
+    background-color: rgba(255, 255, 255, 0.8);
     border: 1px solid var(--border-color);
     color: var(--text-main);
     opacity: 1;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.cal-day.current-month:hover {
+    background-color: var(--white);
+    transform: scale(1.15);
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+    z-index: 10;
 }
 
 .cal-day.done {
@@ -800,6 +829,24 @@ textarea.auto-grow {
 
 .text-red {
     color: #991b1b;
+}
+/* Rain Chart */
+.rain-chart-container {
+    width: 100%;
+    height: 200px;
+    padding: 10px;
+    border-top: 1px solid #000;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+}
+
+.rain-total-label {
+    font-weight: 700;
+    margin-top: 10px;
+    font-size: 1rem;
+    color: var(--primary-color);
 }
 
 /* --- RESPONSIVE MEDIA QUERIES --- */
@@ -970,6 +1017,16 @@ textarea.auto-grow {
     /* Forcing elements not to break across pages awkwardly */
     .section-block {
         page-break-inside: avoid;
+        margin-bottom: 10px !important; /* Compress margins to ensure it fits on one page */
+    }
+    
+    .section-title {
+        margin-bottom: 5px !important;
+    }
+
+    .header-section {
+        margin-bottom: 10px !important;
+        padding-bottom: 10px !important;
     }
 
     .page-break-before {
@@ -1011,5 +1068,17 @@ textarea.auto-grow {
 
     tr {
         page-break-inside: avoid;
+    }
+
+    .textarea-container textarea {
+        border: 1px solid #000 !important;
+        border-radius: 4px;
+        padding: 10px !important;
+        min-height: 100px !important;
+        box-sizing: border-box;
+    }
+
+    .textarea-container textarea.description-area {
+        min-height: 180px !important;
     }
 }
